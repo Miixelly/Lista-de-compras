@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Lista de Compras</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+:root {
+  --font: 'DM Sans', sans-serif;
+  --green: #1D9E75;
+  --green-light: #E8F8F2;
+  --green-dark: #0F6E56;
+  --red: #E24B4A;
+  --red-light: #FEF0F0;
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --border: #E8EAF0;
+  --border-light: #F0F2F7;
+  --text: #1A1D27;
+  --text-2: #6B7080;
+  --text-3: #9DA3B4;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: var(--font); -webkit-tap-highlight-color: transparent; }
+body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; min-height: 100vh; }
+.app-container { width: 100%; max-width: 480px; background: var(--surface); min-height: 100vh; display: flex; flex-direction: column; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.02); }
+
+/* Login Form */
+.screen { display: none; flex-direction: column; flex: 1; padding: 24px; }
+.screen.active { display: flex; }
+#login-screen { justify-content: center; align-items: center; background: #fff; }
+.login-card { width: 100%; max-width: 360px; }
+.login-icon { width: 56px; height: 56px; background: var(--green-light); color: var(--green); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 16px; }
+.login-card h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; text-align: center; }
+.login-card p { font-size: 13px; color: var(--text-2); margin-bottom: 24px; text-align: center; }
+
+/* Abas de Login/Cadastro */
+.auth-tabs { display: flex; border-bottom: 2px solid var(--border-light); margin-bottom: 20px; }
+.auth-tab-btn { flex: 1; padding: 10px; background: none; border: none; font-size: 14px; font-weight: 500; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.auth-tab-btn.active { color: var(--green); border-bottom-color: var(--green); font-weight: 600; }
+
+.auth-form-wrapper { display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.divider { display: flex; align-items: center; text-align: center; color: var(--text-3); font-size: 12px; margin: 16px 0; }
+.divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border-light); }
+.divider:not(:empty)::before { margin-right: .5em; }
+.divider:not(:empty)::after { margin-left: .5em; }
+
+.btn-google { width: 100%; padding: 12px; border: 1px solid var(--border); background: #fff; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; color: var(--text); display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
+.btn-google active { background: var(--bg); }
+.btn-google svg { width: 18px; height: 18px; }
+
+/* Header */
+.app-header { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); background: #fff; position: sticky; top: 0; z-index: 10; }
+.user-info { display: flex; align-items: center; gap: 12px; }
+.user-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--border); object-fit: cover; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--text-2); }
+.user-meta h3 { font-size: 15px; font-weight: 600; color: var(--text); }
+.user-meta p { font-size: 12px; color: var(--text-3); }
+.btn-logout { background: none; border: none; color: var(--text-3); font-size: 20px; cursor: pointer; padding: 4px; display: flex; align-items: center; }
+
+/* Totals Card */
+.totals-card { background: linear-gradient(135deg, var(--green), var(--green-dark)); color: #fff; padding: 20px; border-radius: var(--radius); margin-bottom: 24px; box-shadow: 0 8px 16px rgba(29,158,117,0.15); }
+.totals-main { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+.totals-label { font-size: 13px; opacity: 0.9; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500; }
+.totals-val { font-size: 32px; font-weight: 600; line-height: 1; }
+.totals-row { display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 12px; font-size: 13px; }
+.totals-item { opacity: 0.85; }
+.totals-item span { font-weight: 600; opacity: 1; }
+
+/* Lists Area */
+.section-title { font-size: 14px; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.lists-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-bottom: 24px; }
+.list-box { background: #fff; border: 1px solid var(--border); padding: 16px; border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; }
+.list-box.active { border-color: var(--green); background: var(--green-light); }
+.list-left { display: flex; align-items: center; gap: 14px; }
+.list-icon { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--bg); color: var(--text-2); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+.list-box.active .list-icon { background: #fff; color: var(--green); }
+.list-details h4 { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.list-details p { font-size: 12px; color: var(--text-3); }
+.list-right { display: flex; align-items: center; gap: 8px; }
+.list-price { font-size: 14px; font-weight: 600; color: var(--text); }
+.btn-del-list { background: none; border: none; color: var(--text-3); font-size: 18px; padding: 4px; cursor: pointer; }
+
+/* Items List */
+.items-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 80px; }
+.item-card { background: #fff; border: 1px solid var(--border-light); padding: 10px 14px; border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.item-card.bought { opacity: 0.6; background: var(--bg); border-color: transparent; }
+.item-card.bought .item-title { text-decoration: line-through; color: var(--text-3); }
+.item-l { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.chk-box { width: 22px; height: 22px; border-radius: var(--radius-xs); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; cursor: pointer; flex-shrink: 0; }
+.item-card.bought .chk-box { background: var(--green); border-color: var(--green); }
+.item-thumb { width: 42px; height: 42px; border-radius: var(--radius-sm); background: var(--bg); object-fit: cover; border: 1px solid var(--border-light); flex-shrink: 0; }
+.item-info { min-width: 0; }
+.item-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-meta { font-size: 12px; color: var(--text-3); display: flex; align-items: center; gap: 6px; }
+.item-cat-tag { padding: 1px 6px; background: var(--bg); border-radius: 4px; font-size: 10px; font-weight: 600; color: var(--text-2); }
+.item-r { display: flex; align-items: center; gap: 12px; }
+.item-prices { text-align: right; }
+.item-p-tot { font-size: 14px; font-weight: 600; color: var(--text); }
+.item-p-uni { font-size: 11px; color: var(--text-3); }
+.btn-actions { background: none; border: none; color: var(--text-3); font-size: 18px; padding: 4px; cursor: pointer; }
+
+/* Bottom Nav / Float Actions */
+.bottom-bar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border-light); padding: 12px 24px; display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+.nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; background: none; border: none; color: var(--text-3); font-size: 20px; cursor: pointer; font-weight: 500; }
+.nav-item span { font-size: 11px; }
+.nav-item.active { color: var(--green); }
+.btn-fab { width: 48px; height: 48px; background: var(--green); color: #fff; border-radius: 50%; border: none; font-size: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(29,158,117,0.3); transform: translateY(-16px); }
+
+/* Modais */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: none; justify-content: center; align-items: flex-end; z-index: 100; }
+.modal-overlay.active { display: flex; }
+.modal-content { width: 100%; max-width: 480px; background: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 16px; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.modal-header h3 { font-size: 18px; font-weight: 600; }
+.btn-close-modal { background: none; border: none; color: var(--text-3); font-size: 22px; cursor: pointer; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-group label { font-size: 13px; font-weight: 500; color: var(--text-2); }
+.form-control { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); outline: none; }
+.form-control:focus { border-color: var(--green); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Upload Widget */
+.photo-upload-container { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.photo-preview-box { width: 60px; height: 60px; border-radius: var(--radius-sm); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-3); overflow: hidden; position: relative; background: var(--bg); flex-shrink: 0; }
+.photo-preview-box img { width: 100%; height: 100%; object-fit: cover; }
+.upload-btn-wrapper { flex: 1; }
+.btn-upload-trigger { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border); background: #fff; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; color: var(--text-2); cursor: pointer; }
+
+.btn-primary { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+.btn-primary:active { transform: scale(0.99); }
+
+/* Context Menu / Action Sheet */
+.action-sheet { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 16px; display: none; flex-direction: column; gap: 4px; z-index: 110; box-shadow: 0 -4px 20px rgba(0,0,0,0.08); }
+.action-sheet.active { display: flex; }
+.action-item { width: 100%; padding: 14px; background: none; border: none; text-align: left; font-size: 15px; display: flex; align-items: center; gap: 12px; color: var(--text); cursor: pointer; border-radius: var(--radius-sm); }
+.action-item.danger { color: var(--red); }
+
+/* Histórico */
+.history-item { background: #fff; border: 1px solid var(--border-light); padding: 16px; border-radius: var(--radius); margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+.history-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.history-title { font-size: 15px; font-weight: 600; }
+.history-date { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.history-totals { display: flex; gap: 16px; font-size: 13px; border-top: 1px solid var(--border-light); padding-top: 10px; }
+.history-stat span { font-weight: 600; color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <div id="login-screen" class="screen active">
+    <div class="login-card">
+      <div class="login-icon"><i class="ti ti-shopping-cart"></i></div>
+      <h1>Lista de Compras</h1>
+      <p>Gerencie seus gastos e listas em tempo real.</p>
+      
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tab-entrar" onclick="switchAuthMode('login')">Entrar</button>
+        <button class="auth-tab-btn" id="tab-cadastrar" onclick="switchAuthMode('cadastro')">Cadastrar</button>
+      </div>
+
+      <div class="auth-form-wrapper">
+        <div class="form-group" id="group-nome" style="display: none;">
+          <label>Nome Completo</label>
+          <input type="text" id="auth-nome" class="form-control" placeholder="Seu nome">
+        </div>
+
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="auth-email" class="form-control" placeholder="seu@email.com">
+        </div>
+
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="auth-senha" class="form-control" placeholder="Mínimo 6 dígitos">
+        </div>
+
+        <button class="btn-primary" id="btn-auth-principal" style="margin-top:4px;">Entrar</button>
+      </div>
+
+      <div class="divider">ou</div>
+
+      <button class="btn-google" id="btn-login-google">
+        <svg viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.97 1 12 1 7.37 1 3.4 3.65 1.45 7.53l3.85 2.99C6.22 6.94 8.89 5.04 12 5.04z"/><path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.51h6.46c-.28 1.48-1.12 2.74-2.38 3.58l3.7 2.87c2.16-1.99 3.41-4.92 3.41-8.6z"/><path fill="#FBBC05" d="M5.3 14.44c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29L1.45 6.87C.52 8.73 0 10.81 0 13s.52 4.27 1.45 6.13l3.85-2.69z"/><path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.7-2.87c-1.03.69-2.35 1.11-4.26 1.11-3.11 0-5.78-1.9-6.72-4.49L1.43 16.5C3.38 20.35 7.35 23 12 23z"/></svg>
+        Entrar com o Google
+      </button>
+    </div>
+  </div>
+
+  <div id="main-screen" class="screen">
+    <div class="app-header">
+      <div class="user-info">
+        <div id="user-pfp" class="user-avatar"><i class="ti ti-user"></i></div>
+        <div class="user-meta">
+          <h3 id="user-name">-</h3>
+          <p>Painel de Controle</p>
+        </div>
+      </div>
+      <button class="btn-logout" id="btn-logout"><i class="ti ti-logout"></i></button>
+    </div>
+
+    <div style="padding: 20px 0; overflow-y: auto; flex: 1;">
+      <div class="totals-card">
+        <div class="totals-main">
+          <div>
+            <div class="totals-label">Total Estimado</div>
+            <div class="totals-val" id="val-total-geral">R$ 0,00</div>
+          </div>
+          <i class="ti ti-wallet" style="font-size: 36px; opacity: 0.7;"></i>
+        </div>
+        <div class="totals-row">
+          <div class="totals-item">Carrinho: <span id="val-total-carrinho">R$ 0,00</span></div>
+          <div class="totals-item">Restante: <span id="val-total-restante">R$ 0,00</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">
+        <span>Minhas Listas</span>
+        <i class="ti ti-plus" style="cursor:pointer;" id="btn-add-list-trigger"></i>
+      </div>
+      <div class="lists-grid" id="container-listas"></div>
+
+      <div class="section-title">
+        <span id="title-lista-ativa">Itens da Lista</span>
+      </div>
+      <div class="items-container" id="container-itens"></div>
+    </div>
+  </div>
+
+  <div id="history-screen" class="screen">
+    <div class="app-header" style="padding: 20px 0; margin-bottom: 16px;">
+      <div class="user-meta">
+        <h3 style="font-size: 20px;">Histórico de Compras</h3>
+        <p>Listas salvas na nuvem</p>
+      </div>
+    </div>
+    <div style="flex:1; overflow-y:auto; padding-bottom: 80px;" id="container-historico"></div>
+  </div>
+
+  <div class="bottom-bar" id="app-nav-bar" style="display:none;">
+    <button class="nav-item active" id="nav-home" onclick="switchTab('main')">
+      <i class="ti ti-list-check"></i>
+      <span>Listas</span>
+    </button>
+    <button class="btn-fab" id="btn-fab-add"><i class="ti ti-plus"></i></button>
+    <button class="nav-item" id="nav-history" onclick="switchTab('history')">
+      <i class="ti ti-history"></i>
+      <span>Histórico</span>
+    </button>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="modal-lista">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Nova Lista de Compra</h3>
+      <button class="btn-close-modal" onclick="closeModal('modal-lista')"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="form-group">
+      <label>Nome da Lista</label>
+      <input type="text" id="input-nome-lista" class="form-control" placeholder="Ex: Mercado Mensal">
+    </div>
+    <button class="btn-primary" id="btn-save-lista">Criar Lista</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-item">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-item-title">Adicionar Item</h3>
+      <button class="btn-close-modal" onclick="closeModal('modal-item')"><i class="ti ti-x"></i></button>
+    </div>
+    <input type="hidden" id="input-item-id">
+    <div class="form-group">
+      <label>Nome do Produto</label>
+      <input type="text" id="input-item-nome" class="form-control" placeholder="Ex: Arroz 5kg">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Quantidade</label>
+        <input type="number" id="input-item-qtd" class="form-control" value="1" min="1">
+      </div>
+      <div class="form-group">
+        <label>Preço Unitário (R$)</label>
+        <input type="number" id="input-item-preco" class="form-control" placeholder="0,00" step="0.01">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Categoria</label>
+      <select id="input-item-cat" class="form-control">
+        <option value="Mercearia">🍞 Mercearia</option>
+        <option value="Hortifruti">🍎 Hortifruti</option>
+        <option value="Açougue">🥩 Açougue</option>
+        <option value="Laticínios">🧀 Laticínios</option>
+        <option value="Bebidas">🥤 Bebidas</option>
+        <option value="Limpeza">🧼 Limpeza</option>
+        <option value="Higiene">🪥 Higiene</option>
+        <option value="Outros">📦 Outros</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Miniatura do Produto</label>
+      <div class="photo-upload-container">
+        <div class="photo-preview-box" id="item-photo-preview"><i class="ti ti-photo"></i></div>
+        <div class="upload-btn-wrapper">
+          <label class="btn-upload-trigger">
+            <i class="ti ti-camera"></i> Foto / Upload
+            <input type="file" id="input-item-foto" accept="image/*" style="display:none;">
+          </label>
+        </div>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-save-item">Salvar Item</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="overlay-action-sheet" onclick="closeActionSheet()">
+  <div class="action-sheet" id="action-sheet-content" onclick="event.stopPropagation()">
+    <button class="action-item" id="as-btn-edit"><i class="ti ti-edit" style="color:var(--green)"></i> Editar Produto</button>
+    <button class="action-item" id="as-btn-print"><i class="ti ti-printer"></i> Gerar PDF / Imprimir</button>
+    <button class="action-item danger" id="as-btn-del"><i class="ti ti-trash"></i> Excluir Item</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
+  authDomain: "relatorio-de-compras.firebaseapp.com",
+  projectId: "relatorio-de-compras",
+  storageBucket: "relatorio-de-compras.firebasestorage.app",
+  messagingSenderId: "702964343593",
+  appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+let currentUser = null;
+let listaAtivaId = null;
+let itemSelecionadoId = null;
+let fotoBase64Tmp = "";
+let authMode = "login"; 
+
+const catEmoji = { Mercearia: "🍞", Hortifruti: "🍎", Açougue: "🥩", Laticínios: "🧀", Bebidas: "🥤", Limpeza: "🧼", Higiene: "🪥", Outros: "📦" };
+
+/* --- CHANGER LOGIN / CADASTRO --- */
+function switchAuthMode(mode) {
+  authMode = mode;
+  document.querySelectorAll(".auth-tab-btn").forEach(b => b.classList.remove("active"));
+  if(mode === 'login') {
+    document.getElementById("tab-entrar").classList.add("active");
+    document.getElementById("group-nome").style.display = "none";
+    document.getElementById("btn-auth-principal").innerText = "Entrar";
+  } else {
+    document.getElementById("tab-cadastrar").classList.add("active");
+    document.getElementById("group-nome").style.display = "flex";
+    document.getElementById("btn-auth-principal").innerText = "Criar Conta";
+  }
+}
+
+/* --- SUBMIT DO LOGIN / CADASTRO VIA EMAIL --- */
+document.getElementById("btn-auth-principal").addEventListener("click", () => {
+  const email = document.getElementById("auth-email").value.trim();
+  const senha = document.getElementById("auth-senha").value.trim();
+  const nome = document.getElementById("auth-nome").value.trim();
+
+  if(!email || !senha) return alert("Preencha e-mail e senha!");
+  if(senha.length < 6) return alert("A senha precisa ter pelo menos 6 caracteres.");
+
+  if(authMode === "cadastro") {
+    if(!nome) return alert("Por favor, preencha seu nome!");
+    auth.createUserWithEmailAndPassword(email, senha)
+      .then(result => {
+        return result.user.updateProfile({ displayName: nome });
+      })
+      .catch(err => alert("Erro ao cadastrar: " + err.message));
+  } else {
+    auth.signInWithEmailAndPassword(email, senha)
+      .catch(err => alert("Erro ao entrar: " + err.message));
+  }
+});
+
+/* --- LOGIN GOOGLE --- */
+document.getElementById("btn-login-google").addEventListener("click", () => {
+  auth.signInWithPopup(provider).catch(err => {
+    if (err.code === "auth/operation-not-supported-in-this-environment" || err.code === "auth/auth-domain-config-required") {
+      alert("O Login do Google não funciona localmente pelo arquivo de teste (file:///...). Ele funcionará perfeitamente assim que você subir o app no GitHub Pages ou Firebase Hosting!");
+    } else {
+      alert(err.message);
+    }
+  });
+});
+
+document.getElementById("btn-logout").addEventListener("click", () => auth.signOut());
+
+/* --- CONTROLE DE SESSÃO --- */
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("user-name").innerText = user.displayName || user.email.split('@')[0];
+    
+    const pfpContainer = document.getElementById("user-pfp");
+    if(user.photoURL) {
+      pfpContainer.innerHTML = `<img src="${user.photoURL}" class="user-avatar" style="width:100%; height:100%;">`;
+    } else {
+      pfpContainer.innerHTML = `<i class="ti ti-user"></i>`;
+    }
+    
+    showScreen("main-screen");
+    document.getElementById("app-nav-bar").style.display = "flex";
+    ouvirListas();
+  } else {
+    currentUser = null;
+    showScreen("login-screen");
+    document.getElementById("app-nav-bar").style.display = "none";
+  }
+});
+
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  if (tab === 'main') {
+    document.getElementById("nav-home").classList.add("active");
+    showScreen("main-screen");
+  } else {
+    document.getElementById("nav-history").classList.add("active");
+    showScreen("history-screen");
+    renderizarHistorico();
+  }
+}
+
+function openModal(id) { document.getElementById(id).classList.add("active"); }
+function closeModal(id) { 
+  document.getElementById(id).classList.remove("active");
+  if(id === 'modal-item') {
+    document.getElementById("input-item-id").value = "";
+    document.getElementById("input-item-nome").value = "";
+    document.getElementById("input-item-qtd").value = "1";
+    document.getElementById("input-item-preco").value = "";
+    document.getElementById("item-photo-preview").innerHTML = '<i class="ti ti-photo"></i>';
+    fotoBase64Tmp = "";
+  }
+}
+
+document.getElementById("btn-add-list-trigger").addEventListener("click", () => openModal("modal-lista"));
+document.getElementById("btn-fab-add").addEventListener("click", () => {
+  if(!listaAtivaId) return alert("Crie ou selecione uma lista primeiro!");
+  document.getElementById("modal-item-title").innerText = "Adicionar Item";
+  openModal("modal-item");
+});
+
+/* --- PROCESSAMENTO DA FOTO MINIATURA --- */
+document.getElementById("input-item-foto").addEventListener("change", function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      const max_size = 100; 
+      let width = img.width;
+      let height = img.height;
+      if (width > height) {
+        if (width > max_size) { height *= max_size / width; width = max_size; }
+      } else {
+        if (height > max_size) { width *= max_size / height; height = max_size; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      fotoBase64Tmp = canvas.toDataURL("image/jpeg", 0.6);
+      document.getElementById("item-photo-preview").innerHTML = `<img src="${fotoBase64Tmp}">`;
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+/* --- BANCO DE DADOS --- */
+function ouvirListas() {
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").orderBy("criadoEm", "desc")
+    .onSnapshot(snapshot => {
+      const container = document.getElementById("container-listas");
+      container.innerHTML = "";
+      let listCards = [];
+      let flagAtivaAindaExiste = false;
+
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if(doc.id === listaAtivaId) flagAtivaAindaExiste = true;
+        listCards.push({id: doc.id, ...data});
+      });
+
+      if(listCards.length > 0 && (!listaAtivaId || !flagAtivaAindaExiste)) listaAtivaId = listCards[0].id;
+
+      if(listCards.length === 0) {
+        container.innerHTML = `<p style="font-size:13px; color:var(--text-3);">Nenhuma lista ativa. Toque no + para criar.</p>`;
+        listaAtivaId = null;
+        renderizarItensVazio();
+        atualizarTotaisCards(0, 0);
+        return;
+      }
+
+      listCards.forEach(l => {
+        const isSel = l.id === listaAtivaId;
+        const box = document.createElement("div");
+        box.className = `list-box ${isSel ? 'active' : ''}`;
+        box.onclick = () => { listaAtivaId = l.id; ouvirListas(); };
+        box.innerHTML = `
+          <div class="list-left">
+            <div class="list-icon"><i class="ti ti-shopping-cart-discount"></i></div>
+            <div class="list-details"><h4>${l.nome}</h4><p>${new Date(l.criadoEm).toLocaleDateString('pt-BR')}</p></div>
+          </div>
+          <div class="list-right">
+            <div class="list-price">R$ ${(l.totalGeral || 0).toFixed(2).replace('.',',')}</div>
+            <button class="btn-del-list" onclick="event.stopPropagation(); deletarLista('${l.id}')"><i class="ti ti-trash"></i></button>
+          </div>
+        `;
+        container.appendChild(box);
+      });
+
+      if(listaAtivaId) {
+        const ativa = listCards.find(x => x.id === listaAtivaId);
+        document.getElementById("title-lista-ativa").innerText = ativa ? `Itens: ${ativa.nome}` : "Itens da Lista";
+        ouvirItens(listaAtivaId);
+      }
+    });
+}
+
+document.getElementById("btn-save-lista").addEventListener("click", () => {
+  const nome = document.getElementById("input-nome-lista").value.trim();
+  if(!nome) return;
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").add({
+    nome: nome, criadoEm: Date.now(), totalGeral: 0, totalCarrinho: 0
+  }).then(docRef => {
+    listaAtivaId = docRef.id;
+    document.getElementById("input-nome-lista").value = "";
+    closeModal("modal-lista");
+  });
+});
+
+function deletarLista(id) {
+  if(confirm("Deseja excluir esta lista inteira?")) {
+    db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(id).delete().then(() => {
+      if(listaAtivaId === id) listaAtivaId = null;
+    });
+  }
+}
+
+let desvincularItensSnapshot = null;
+function ouvirItens(listaId) {
+  if(desvincularItensSnapshot) desvincularItensSnapshot();
+  desvincularItensSnapshot = db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaId).collection("itens").orderBy("criadoEm", "asc")
+    .onSnapshot(snapshot => {
+      const container = document.getElementById("container-itens");
+      container.innerHTML = "";
+      let tGeral = 0, tCarrinho = 0, itemsArray = [];
+
+      snapshot.forEach(doc => {
+        const it = doc.data();
+        itemsArray.push({id: doc.id, ...it});
+        const sub = (it.preco || 0) * (it.qtd || 1);
+        tGeral += sub;
+        if(it.comprado) tCarrinho += sub;
+      });
+
+      db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaId).update({ totalGeral: tGeral, totalCarrinho: tCarrinho });
+      atualizarTotaisCards(tGeral, tCarrinho);
+
+      if(itemsArray.length === 0) { renderizarItensVazio(); return; }
+
+      itemsArray.forEach(it => {
+        const sub = (it.preco || 0) * (it.qtd || 1);
+        const card = document.createElement("div");
+        card.className = `item-card ${it.comprado ? 'bought' : ''}`;
+        const thumbSrc = it.foto || "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='42' height='42' viewBox='0 0 24 24' fill='none' stroke='%239DA3B4' stroke-width='1.5'><rect width='18' height='18' x='3' y='3' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><path d='m21 15-5-5L5 21'/></svg>";
+
+        card.innerHTML = `
+          <div class="item-l">
+            <div class="chk-box" onclick="toggleItemComprado('${it.id}', ${it.comprado})">${it.comprado ? '<i class="ti ti-check"></i>' : ''}</div>
+            <img src="${thumbSrc}" class="item-thumb" alt="Miniatura">
+            <div class="item-info">
+              <div class="item-title">${it.nome}</div>
+              <div class="item-meta"><span>${it.qtd}x</span> • <span class="item-cat-tag">${catEmoji[it.cat] || ''} ${it.cat}</span></div>
+            </div>
+          </div>
+          <div class="item-r">
+            <div class="items-prices">
+              <div class="item-p-tot">R$ ${sub.toFixed(2).replace('.',',')}</div>
+              <div class="item-p-uni">R$ ${(it.preco || 0).toFixed(2).replace('.',',')}</div>
+            </div>
+            <button class="btn-actions" onclick="openActionSheet('${it.id}')"><i class="ti ti-dots-vertical"></i></button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    });
+}
+
+function renderizarItensVazio() {
+  document.getElementById("container-itens").innerHTML = `<div style="text-align:center; padding:32px 16px; color:var(--text-3);"><i class="ti ti-package" style="font-size:32px; margin-bottom:4px; display:block;"></i><p style="font-size:12px;">Lista vazia. Adicione itens.</p></div>`;
+}
+
+function atualizarTotaisCards(geral, carrinho) {
+  document.getElementById("val-total-geral").innerText = `R$ ${geral.toFixed(2).replace('.',',')}`;
+  document.getElementById("val-total-carrinho").innerText = `R$ ${carrinho.toFixed(2).replace('.',',')}`;
+  document.getElementById("val-total-restante").innerText = `R$ ${(geral - carrinho).toFixed(2).replace('.',',')}`;
+}
+
+function toggleItemComprado(itemId, estadoAtual) {
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).collection("itens").doc(itemId).update({ comprado: !estadoAtual });
+}
+
+document.getElementById("btn-save-item").addEventListener("click", () => {
+  const nome = document.getElementById("input-item-nome").value.trim();
+  const qtd = parseInt(document.getElementById("input-item-qtd").value) || 1;
+  const preco = parseFloat(document.getElementById("input-item-preco").value) || 0;
+  const cat = document.getElementById("input-item-cat").value;
+  const idDoc = document.getElementById("input-item-id").value;
+
+  if(!nome) return alert("Digite o nome do produto!");
+
+  const dataPayload = { nome, qtd, preco, cat, foto: fotoBase64Tmp || null, atualizadoEm: Date.now() };
+  const ref = db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).collection("itens");
+
+  if(idDoc) ref.doc(idDoc).update(dataPayload).then(() => closeModal("modal-item"));
+  else { dataPayload.comprado = false; dataPayload.criadoEm = Date.now(); ref.add(dataPayload).then(() => closeModal("modal-item")); }
+});
+
+function openActionSheet(itemId) { itemSelecionadoId = itemId; document.getElementById("overlay-action-sheet").classList.add("active"); }
+function closeActionSheet() { document.getElementById("overlay-action-sheet").classList.remove("active"); }
+
+document.getElementById("as-btn-edit").addEventListener("click", () => {
+  closeActionSheet();
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).collection("itens").doc(itemSelecionadoId).get().then(doc => {
+    if(!doc.exists) return;
+    const data = doc.data();
+    document.getElementById("modal-item-title").innerText = "Editar Item";
+    document.getElementById("input-item-id").value = doc.id;
+    document.getElementById("input-item-nome").value = data.nome;
+    document.getElementById("input-item-qtd").value = data.qtd;
+    document.getElementById("input-item-preco").value = data.preco || "";
+    document.getElementById("input-item-cat").value = data.cat;
+    if(data.foto) { fotoBase64Tmp = data.foto; document.getElementById("item-photo-preview").innerHTML = `<img src="${data.foto}">`; }
+    openModal("modal-item");
+  });
+});
+
+document.getElementById("as-btn-del").addEventListener("click", () => {
+  closeActionSheet();
+  if(confirm("Remover este item?")) db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).collection("itens").doc(itemSelecionadoId).delete();
+});
+
+document.getElementById("as-btn-print").addEventListener("click", () => {
+  closeActionSheet();
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).get().then(docLista => {
+    const dadosLista = docLista.data();
+    db.collection("usuarios").doc(currentUser.uid).collection("listas").doc(listaAtivaId).collection("itens").get().then(snapItens => {
+      let htmlPrint = `<html><head><title>Lista - ${dadosLista.nome}</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;}.img-print{width:30px;height:30px;object-fit:cover;border-radius:4px;}</style></head><body><h1>${dadosLista.nome}</h1><table><thead><tr><th>Foto</th><th>Item</th><th>Qtd</th><th>Preço</th></tr></thead><tbody>`;
+      snapItens.forEach(docIt => {
+        const item = docIt.data();
+        const imgTag = item.foto ? `<img src="${item.foto}" class="img-print">` : '';
+        htmlPrint += `<tr><td>${imgTag}</td><td>${item.nome}</td><td>${item.qtd}x</td><td>R$ ${(item.preco||0).toFixed(2).replace('.',',')}</td></tr>`;
+      });
+      htmlPrint += `</tbody></table></body></html>`;
+      const w = window.open('', '_blank'); w.document.write(htmlPrint); w.document.close(); setTimeout(() => { w.print(); }, 500);
+    });
+  });
+});
+
+function renderizarHistorico() {
+  db.collection("usuarios").doc(currentUser.uid).collection("listas").get().then(snapshot => {
+    const container = document.getElementById("container-historico"); container.innerHTML = "";
+    if(snapshot.empty) { container.innerHTML = `<p style="font-size:13px; color:var(--text-3); text-align:center;">Vazio.</p>`; return; }
+    snapshot.forEach(doc => {
+      const l = doc.data();
+      const card = document.createElement("div"); card.className = "history-item";
+      card.innerHTML = `<div class="history-top"><div><div class="history-title">${l.nome}</div><div class="history-date">${new Date(l.criadoEm).toLocaleDateString('pt-BR')}</div></div></div><div class="history-totals"><div class="history-stat">Total: <span>R$ ${(l.totalGeral || 0).toFixed(2).replace('.',',')}</span></div></div>`;
+      container.appendChild(card);
+    });
+  });
+}
+</script>
+</body>
+</html>
