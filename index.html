@@ -1,181 +1,456 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatório de Compras</title>
-    <link rel="icon" type="image/png" href="favicon.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Compras & Gestão Financeira</title>
+  
+  <link rel="icon" type="image/png" href="favicon.png">
+  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #F8FAFC;
+      --surface: #FFFFFF;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --success: #10B981;
+      --red: #EF4444;
+      --accent: #F59E0B;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; }
     
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans min-h-screen encoding-utf8">
+    .app-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 900px) { .app-container { grid-template-columns: 1.5fr 1fr; } }
 
-    <div class="max-w-4xl mx-auto p-4">
-        <header class="bg-blue-600 text-white p-6 rounded-lg shadow-md mb-6">
-            <h1 class="text-2xl font-bold text-center">Sistema de Relatório de Compras</h1>
-            <p class="text-sm text-center text-blue-100 mt-1">Imagens salvas localmente em Base64 (Sem custo de Storage)</p>
-        </header>
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; grid-column: 1 / -1; }
+    header h1 { font-size: 24px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .status-save { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
 
-        <section class="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">Adicionar Novo Item</h2>
-            <form id="purchaseForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-600">Nome do Produto/Item:</label>
-                    <input type="text" id="itemName" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600">Valor (R$):</label>
-                        <input type="number" step="0.01" id="itemValue" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600">Miniatura da Imagem (Foto/Recibo):</label>
-                        <input type="file" id="itemImage" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    </div>
-                </div>
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+    .sep { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
+    
+    .input-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; margin-bottom: 16px; }
+    @media (max-width: 600px) { .input-row { grid-template-columns: 1fr; } }
 
-                <div id="previewContainer" class="hidden">
-                    <p class="text-xs text-gray-500 mb-1">Pré-visualização da miniatura:</p>
-                    <img id="imagePreview" src="" alt="Preview" class="h-20 w-20 object-cover rounded border shadow-sm">
-                </div>
+    input, select, button { padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; outline: none; background: var(--surface); transition: all 0.2s; }
+    input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    
+    button { font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    .btn-primary { background: var(--primary); color: white; border: none; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    
+    .list-items { display: flex; flex-col: column; gap: 8px; margin-top: 12px; }
+    .item-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+    .item-row.bought { opacity: 0.65; }
+    .item-row.bought .item-name { text-decoration: line-through; color: var(--text-muted); }
+    
+    .item-info { display: flex; align-items: center; gap: 10px; flex: 1; min-w: 0; }
+    .item-name { font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-meta { font-size: 12px; color: var(--text-muted); }
+    .item-actions { display: flex; items: center; gap: 4px; }
+    
+    .btn-icon { padding: 6px; border: none; background: transparent; color: var(--text-muted); border-radius: 6px; }
+    .btn-icon:hover { background: var(--border); color: var(--text); }
+    .btn-icon.delete:hover { background: rgba(239, 68, 68, 0.1); color: var(--red); }
 
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-200">
-                    Salvar no Relatório
-                </button>
-            </form>
-        </section>
+    .metric { background: var(--bg); border: 1px solid var(--border); padding: 12px; border-radius: 8px; text-align: center; }
+    .metric .val { font-size: 20px; font-weight: 700; color: var(--text); }
+    .metric .lbl { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-top: 2px; }
 
-        <section class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-xl font-semibold mb-4 text-gray-700">Itens Cadastrados</h2>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Miniatura</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Valor</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="itemsTableBody" class="bg-white divide-y divide-gray-200">
-                        </tbody>
-                </table>
+    .receipt-upload { border: 2px dashed var(--border); padding: 24px; text-align: center; border-radius: 8px; cursor: pointer; color: var(--text-muted); margin-bottom: 16px; transition: border 0.2s; }
+    .receipt-upload:hover { border-color: var(--primary); color: var(--primary); }
+    
+    .receipts-list { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; }
+    .receipt-item { display: flex; align-items: center; justify-content: space-between; padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+    .receipt-item img { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; }
+
+    #chart-cats, #price-history { min-height: 120px; display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .chart-bar-container { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+    .chart-bar-label { display: flex; justify-content: space-between; font-weight: 500; }
+    .chart-bar-bg { width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .chart-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+
+    #ai-relatorio { margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--text); background: var(--bg); padding: 12px; border-radius: 8px; border-left: 4px solid var(--primary); display: none; }
+
+    /* Modal Visor de Imagem */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; padding: 16px; }
+    .modal-content { background: var(--surface); padding: 12px; border-radius: var(--radius); max-width: 500px; width: 100%; position: relative; }
+    .modal-content img { width: 100%; height: auto; border-radius: 8px; max-height: 70vh; object-fit: contain; }
+    .modal-close { position: absolute; top: -40px; right: 0; color: white; background: transparent; border: none; font-size: 24px; }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Suas credenciais fornecidas
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
+      authDomain: "relatorio-de-compras.firebaseapp.com",
+      projectId: "relatorio-de-compras",
+      storageBucket: "relatorio-de-compras.firebasestorage.app",
+      messagingSenderId: "702964343593",
+      appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Variáveis globais de controle de dados
+    const KEYS = { items: 'lista_items_v2', hist: 'lista_hist_v2', metas: 'lista_metas_v2', extratos: 'lista_extratos_v1' };
+    let items = [];
+    let historico = [];
+    let extratos = [];
+    let metas = { carne:300, verdura:150, fruta:80, mercearia:200, limpeza:100, higiene:80, laticinio:120, padaria:60, bebida:80, outro:100 };
+
+    const catEmoji = { carne:'🥩', verdura:'🥬', fruta:'🍎', mercearia:'🛒', limpeza:'🧹', higiene:'🧴', laticinio:'🥛', padaria:'🍞', bebida:'🧃', outro:'📦' };
+    const catColors = { carne:'#E24B4A', verdura:'#639922', fruta:'#EF9F27', mercearia:'#7F77DD', limpeza:'#1D9E75', higiene:'#378ADD', laticinio:'#D4537E', padaria:'#D85A30', bebida:'#BA7517', outro:'#888780' };
+
+    // Sincronização automática com Firestore
+    async function loadData() {
+      try {
+        const docRef = doc(db, "appData", "dashboard");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.items) items = JSON.parse(data.items);
+          if (data.historico) historico = JSON.parse(data.historico);
+          if (data.metas) metas = JSON.parse(data.metas);
+          if (data.extratos) extratos = JSON.parse(data.extratos);
+        }
+      } catch (e) {
+        console.error("Erro ao carregar dados do Firestore, carregando localmente: ", e);
+        // Fallback local se falhar
+        if (localStorage.getItem(KEYS.items)) items = JSON.parse(localStorage.getItem(KEYS.items));
+        if (localStorage.getItem(KEYS.hist)) historico = JSON.parse(localStorage.getItem(KEYS.hist));
+        if (localStorage.getItem(KEYS.metas)) metas = JSON.parse(localStorage.getItem(KEYS.metas));
+        if (localStorage.getItem(KEYS.extratos)) extratos = JSON.parse(localStorage.getItem(KEYS.extratos));
+      }
+      renderLista();
+      renderExtratos();
+    }
+
+    let saveTimer = null;
+    async function save() {
+      const ind = document.getElementById('save-status');
+      if (ind) ind.innerHTML = '<i class="ti ti-refresh rotate"></i> Salvando...';
+      
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          // Salva local por redundância e velocidade
+          localStorage.setItem(KEYS.items, JSON.stringify(items));
+          localStorage.setItem(KEYS.hist, JSON.stringify(historico));
+          localStorage.setItem(KEYS.metas, JSON.stringify(metas));
+          localStorage.setItem(KEYS.extratos, JSON.stringify(extratos));
+
+          // Envia o payload completo para o Firestore
+          await setDoc(doc(db, "appData", "dashboard"), {
+            items: JSON.stringify(items),
+            historico: JSON.stringify(historico),
+            metas: JSON.stringify(metas),
+            extratos: JSON.stringify(extratos),
+            updatedAt: new Date().toISOString()
+          });
+
+          if (ind) ind.innerHTML = '<i class="ti ti-cloud-check" style="color:var(--success)"></i> Nuvem atualizada';
+        } catch (e) {
+          console.error(e);
+          if (ind) ind.innerHTML = '<i class="ti ti-cloud-off" style="color:var(--red)"></i> Erro ao sincronizar';
+        }
+      }, 800);
+    }
+
+    // Lógica da Lista de Compras
+    function adicionarItem() {
+      const nome = document.getElementById('it-nome').value.trim();
+      const qtd = parseFloat(document.getElementById('it-qtd').value) || 1;
+      const preco = parseFloat(document.getElementById('it-preco').value) || 0;
+      const cat = document.getElementById('it-cat').value;
+
+      if (!nome) return;
+
+      items.push({ id: Date.now().toString(), nome, qtd, preco, cat, comprado: false });
+      document.getElementById('it-nome').value = '';
+      document.getElementById('it-qtd').value = '1';
+      document.getElementById('it-preco').value = '';
+      
+      renderLista();
+      save();
+    }
+
+    function toggleComprado(id) {
+      items = items.map(it => {
+        if (it.id === id) {
+          const novoStatus = !it.comprado;
+          if (novoStatus && it.preco > 0) {
+            historico.push({ nome: it.nome, preco: it.preco, cat: it.cat, data: new Date().toLocaleDateString('pt-BR') });
+          }
+          return { ...it, comprado: novoStatus };
+        }
+        return it;
+      });
+      renderLista();
+      save();
+    }
+
+    function deletarItem(id) {
+      items = items.filter(it => it.id !== id);
+      renderLista();
+      save();
+    }
+
+    function limparComprados() {
+      items = items.filter(it => !it.comprado);
+      renderLista();
+      save();
+    }
+
+    function renderLista() {
+      const container = document.getElementById('list-items');
+      container.innerHTML = '';
+
+      let totalEstimado = 0;
+      const gastosPorCat = {};
+
+      items.forEach(it => {
+        const subtotal = it.preco * it.qtd;
+        totalEstimado += subtotal;
+        gastosPorCat[it.cat] = (gastosPorCat[it.cat] || 0) + subtotal;
+
+        const row = document.createElement('div');
+        row.className = `item-row ${it.comprado ? 'bought' : ''}`;
+        row.innerHTML = `
+          <div class="item-info" style="cursor:pointer">
+            <input type="checkbox" ${it.comprado ? 'checked' : ''} style="cursor:pointer">
+            <span class="item-name">${catEmoji[it.cat] || ''} ${it.nome}</span>
+            <span class="item-meta">${it.qtd}x ${it.preco > 0 ? 'R$ ' + it.preco.toFixed(2) : '—'}</span>
+          </div>
+          <div class="item-actions">
+            <button class="btn-icon delete"><i class="ti ti-trash"></i></button>
+          </div>
+        `;
+
+        row.querySelector('.item-info').onclick = () => toggleComprado(it.id);
+        row.querySelector('.delete').onclick = (e) => { e.stopPropagation(); deletarItem(it.id); };
+
+        container.appendChild(row);
+      });
+
+      document.getElementById('r-total').innerText = `R$ ${totalEstimado.toFixed(2)}`;
+      renderCharts(gastosPorCat);
+    }
+
+    // Gerenciamento de Extratos / Cupons Fiscais via Base64
+    function handleReceiptUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const valor = parseFloat(prompt("Digite o valor total deste cupom (R$):")) || 0;
+      const mercado = prompt("Digite o nome do estabelecimento:") || "Supermercado";
+
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        const base64String = reader.result; // Miniatura/Imagem convertida em String Base64
+        
+        extratos.push({
+          id: Date.now().toString(),
+          mercado,
+          valor,
+          data: new Date().toLocaleDateString('pt-BR'),
+          img: base64String // Salvo diretamente na estrutura de dados principal
+        });
+
+        renderExtratos();
+        save();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function deletarExtrato(id) {
+      if (confirm("Remover este registro de extrato?")) {
+        extratos = extratos.filter(ex => ex.id !== id);
+        renderExtratos();
+        save();
+      }
+    }
+
+    function renderExtratos() {
+      const container = document.getElementById('receipts-list');
+      container.innerHTML = '';
+      let sum = 0;
+
+      extratos.forEach(ex => {
+        sum += ex.valor;
+        const div = document.createElement('div');
+        div.className = 'receipt-item';
+        div.innerHTML = `
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="${ex.img || 'https://placehold.co/80'}" alt="Cupom">
+            <div>
+              <div style="font-weight:600">${ex.mercado}</div>
+              <div style="font-size:12px;color:var(--text-muted)">${ex.data} — R$ ${ex.valor.toFixed(2)}</div>
             </div>
-        </section>
+          </div>
+          <button class="btn-icon delete"><i class="ti ti-trash"></i></button>
+        `;
+
+        div.querySelector('img').onclick = () => abrirModalImagem(ex.img);
+        div.querySelector('.delete').onclick = () => deletarExtrato(ex.id);
+        container.appendChild(div);
+      });
+
+      document.getElementById('r-extratos-val').innerText = `R$ ${sum.toFixed(2)}`;
+      document.getElementById('r-extratos-count').innerText = `${extratos.length} cupons guardados`;
+    }
+
+    // Gráficos customizados em HTML puro
+    function renderCharts(gastos) {
+      const container = document.getElementById('chart-cats');
+      container.innerHTML = '';
+
+      Object.entries(metas).forEach(([cat, limite]) => {
+        const atual = gastos[cat] || 0;
+        const pct = Math.min((atual / limite) * 100, 100);
+        
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar-container';
+        bar.innerHTML = `
+          <div class="chart-bar-label">
+            <span>${catEmoji[cat] || ''} <span style="text-transform:capitalize">${cat}</span></span>
+            <span class="data-label">R$ ${atual.toFixed(2)} / R$ ${limite}</span>
+          </div>
+          <div class="chart-bar-bg">
+            <div class="chart-bar-fill" style="width: ${pct}%; background: ${catColors[cat] || var(--primary)}"></div>
+          </div>
+        `;
+        container.appendChild(bar);
+      });
+    }
+
+    // Modais e Utilitários de Visualização
+    function abrirModalImagem(src) {
+      const m = document.getElementById('img-modal');
+      document.getElementById('modal-img-target').src = src;
+      m.style.display = 'flex';
+    }
+
+    function fecharModalImagem() {
+      document.getElementById('img-modal').style.display = 'none';
+    }
+
+    function exportarTexto() {
+      let txt = `LISTA DE COMPRAS — ${new Date().toLocaleDateString('pt-BR')}\n`;
+      txt += `==========================================\n\n`;
+      items.forEach(it => {
+        txt += `${it.comprado ? '[✓]' : '[ ]'} ${it.nome} (${it.qtd}x) ${it.preco > 0 ? '— R$ ' + it.preco.toFixed(2) : ''}\n`;
+      });
+      
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `lista-de-compras-${Date.now()}.txt`;
+      a.click();
+    }
+
+    function gerarRelatorioAI() {
+      const box = document.getElementById('ai-relatorio');
+      box.style.display = 'block';
+      box.innerHTML = 'Analisando perfil de consumo local...';
+      
+      setTimeout(() => {
+        let total = items.reduce((acc, i) => acc + (i.preco * i.qtd), 0);
+        if(total === 0) {
+          box.innerHTML = "Sua lista está vazia ou sem preços inseridos para gerar uma inteligência de compras.";
+          return;
+        }
+        box.innerHTML = `<strong>💡 Análise de IA gerada:</strong><br>Seus gastos estimados estão em R$ ${total.toFixed(2)}. Recomenda-se pesquisar itens de mercearia no atacado para diluir o custo unitário. Fique atento às metas estipuladas no painel lateral.`;
+      }, 1200);
+    }
+
+    function sendPromptFn(text) {
+      alert("Pesquisando dicas de economia no navegador para: \n" + text);
+    }
+
+    // Event Listeners e Atribuição global para o HTML
+    window.addEventListener('DOMContentLoaded', () => {
+      loadData();
+      
+      document.getElementById('btn-add').onclick = adicionarItem;
+      document.getElementById('btn-clear').onclick = limparComprados;
+      document.getElementById('btn-relatorio').onclick = gerarRelatorioAI;
+      document.getElementById('btn-export').onclick = exportarTexto;
+      document.getElementById('btn-tips').onclick = () => sendPromptFn('Com base na minha lista de compras, me dá dicas práticas de economia para o supermercado no Brasil');
+      document.getElementById('modal-close').onclick = fecharModalImagem;
+      
+      document.getElementById('file-upload').onchange = handleReceiptUpload;
+      document.getElementById('receipt-trigger').onclick = () => document.getElementById('file-upload').click();
+
+      // Permitir adicionar item ao pressionar Enter no input de nome
+      document.getElementById('it-nome').onkeydown = (e) => { if(e.key === 'Enter') adicionarItem(); };
+    });
+  </script>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <header>
+      <h1><i class="ti ti-shopping-cart-discount"></i> Lista Inteligente de Compras</h1>
+      <div class="status-save" id="save-status"><i class="ti ti-cloud-computing"></i> Conectado ao Firestore</div>
+    </header>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="sep">Montar lista de compras</div>
+      
+      <div class="input-row">
+        <input type="text" id="it-nome" placeholder="Nome do produto ou item...">
+        <input type="number" id="it-qtd" value="1" min="0.1" step="any" placeholder="Qtd.">
+        <input type="number" id="it-preco" step="0.01" placeholder="Preço (R$)">
+        <select id="it-cat">
+          <option value="mercearia">🛒 Mercearia</option>
+          <option value="carne">🥩 Carnes</option>
+          <option value="verdura">🥬 Verduras</option>
+          <option value="fruta">🍎 Frutas</option>
+          <option value="limpeza">🧹 Limpeza</option>
+          <option value="higiene">🧴 Higiene</option>
+          <option value="laticinio">🥛 Laticínios</option>
+          <option value="padaria">🍞 Padaria</option>
+          <option value="bebida">🧃 Bebidas</option>
+          <option value="outro">📦 Outros</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 8px;">
+        <button class="btn-primary" id="btn-add"><i class="ti ti-plus"></i> Adicionar Item</button>
+        <button style="color: var(--red); border-color: rgba(239, 68, 68, 0.2);" id="btn-clear"><i class="ti ti-trash-x"></i> Limpar Comprados</button>
+      </div>
+
+      <div class="list-items" id="list-items">
+        </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        // Suas credenciais fornecidas
-        const firebaseConfig = {
-            apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
-            authDomain: "relatorio-de-compras.firebaseapp.com",
-            projectId: "relatorio-de-compras",
-            storageBucket: "relatorio-de-compras.firebasestorage.app",
-            messagingSenderId: "702964343593",
-            appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
-        };
-
-        // Inicializa o Firebase e o Firestore
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const comprasCollection = collection(db, "compras");
-
-        // Variável para armazenar a string Base64 temporária
-        let base64ImageString = "";
-
-        // Elementos do DOM
-        const purchaseForm = document.getElementById('purchaseForm');
-        const itemImageInput = document.getElementById('itemImage');
-        const imagePreview = document.getElementById('imagePreview');
-        const previewContainer = document.getElementById('previewContainer');
-        const itemsTableBody = document.getElementById('itemsTableBody');
-
-        // Escuta o upload do arquivo para converter em Base64
-        itemImageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                
-                reader.onload = function(event) {
-                    // Limita o tamanho ou resolução reduzindo a qualidade se necessário. 
-                    // Para projetos simples, o FileReader direto atende muito bem.
-                    base64ImageString = event.target.result;
-                    
-                    // Mostra o preview na tela
-                    imagePreview.src = base64ImageString;
-                    previewContainer.classList.remove('hidden');
-                };
-                
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Envia os dados para o Firestore
-        purchaseForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const name = document.getElementById('itemName').value;
-            const value = parseFloat(document.getElementById('itemValue').value);
-
-            try {
-                await addDoc(comprasCollection, {
-                    nome: name,
-                    valor: value,
-                    imagemBase64: base64ImageString || null, // Salva o texto da imagem diretamente aqui
-                    criadoEm: new Date()
-                });
-
-                // Limpa o formulário após o sucesso
-                purchaseForm.reset();
-                previewContainer.classList.add('hidden');
-                base64ImageString = ""; 
-                alert("Item salvo com sucesso!");
-            } catch (error) {
-                console.error("Erro ao salvar no Firestore: ", error);
-                alert("Erro ao salvar os dados. Verifique as regras do seu banco de dados.");
-            }
-        });
-
-        // Escuta as alterações no Firestore em tempo real para listar na tabela
-        onSnapshot(comprasCollection, (snapshot) => {
-            itemsTableBody.innerHTML = "";
-            
-            snapshot.forEach((docSnap) => {
-                const item = docSnap.data();
-                const id = docSnap.id;
-
-                // Define uma imagem padrão caso não tenha foto salva
-                const imgTag = item.imagemBase64 
-                    ? `<img src="${item.imagemBase64}" class="h-12 w-12 object-cover rounded shadow-sm border">` 
-                    : `<span class="text-gray-400 text-xs">Sem foto</span>`;
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap">${imgTag}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.nome}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">R$ ${item.valor.toFixed(2)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button onclick="deletarItem('${id}')" class="text-red-600 hover:text-red-900 bg-red-50 hover:bg-red-100 px-3 py-1 rounded transition">Excluir</button>
-                    </td>
-                `;
-                itemsTableBody.appendChild(tr);
-            });
-        });
-
-        // Função global para deletar o item da lista
-        window.deletarItem = async (id) => {
-            if(confirm("Tem certeza que deseja remover este item?")) {
-                try {
-                    await deleteDoc(doc(db, "compras", id));
-                } catch (error) {
-                    console.error("Erro ao deletar: ", error);
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <div class="card">
+        <div class="sep">Histórico de Cupons & Extratos</div>
+        <input type="file" id="file-upload" accept="image/*" style="display:none">
+        <div class="receipt-upload" id="receipt-trigger">
+          <i class="ti ti-camera" style="font-size:28px;margin-bottom:6px;display:block"></i>
+          Clique para carregar foto do cupom fiscal
+        </div>
+        <div class="receipts-list" id="receipts-list">
+          </div>
+      </div>
