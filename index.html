@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Lista de Compras</title>
+
+<link rel="icon" type="image/png" href="favicon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
@@ -484,11 +487,6 @@ button:hover { background: var(--bg); }
 }
 .filter-bar-btns { display: flex; gap: 8px; flex-shrink: 0; }
 
-/* ── BOTTOM SAFE AREA ── */
-@media (max-width: 430px) {
-  .modal-box { border-radius: 20px 20px 0 0; }
-}
-
 /* ── RECEIPT TABLE ── */
 .receipt-table {
   width: 100%;
@@ -869,12 +867,12 @@ button:hover { background: var(--bg); }
 
     <div class="login-footer">
       Não tem conta? <a href="#" onclick="criarConta();return false">Cadastre-se grátis</a><br>
-      <span style="margin-top:4px;display:block">Seus dados ficam salvos no dispositivo</span>
+      <button onclick="logout()" style="margin-top:10px; background:none; border:none; color:var(--text-3); font-size:11px; cursor:pointer; box-shadow:none; text-decoration:underline;">Sair / Trocar Conta</button>
     </div>
   </div>
 </div>
 
-<div class="save-indicator" id="save-ind"><i class="ti ti-check"></i> Salvo</div>
+<div class="save-indicator" id="save-ind"><i class="ti ti-check"></i> Salvo no Cloud</div>
 
 <div id="modal-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
   <div class="modal-box">
@@ -955,31 +953,561 @@ button:hover { background: var(--bg); }
   </div>
 
   <div class="content">
+
+    <div id="tab-lista" class="section active">
+      <div class="filter-bar">
+        <select id="filtro-cat" onchange="renderLista()">
+          <option value="">Todas as categorias</option>
+          <option value="carne">🥩 Carne</option>
+          <option value="verdura">🥬 Verdura</option>
+          <option value="fruta">🍎 Fruta</option>
+          <option value="mercearia">🛒 Mercearia</option>
+          <option value="limpeza">🧹 Limpeza</option>
+          <option value="higiene">🧴 Higiene</option>
+          <option value="laticinio">🥛 Laticínio</option>
+          <option value="padaria">🍞 Padaria</option>
+          <option value="bebida">🧃 Bebida</option>
+          <option value="outro">📦 Outro</option>
+        </select>
+        <div class="filter-bar-btns">
+          <button class="btn-ghost-green" id="btn-compartilhar" onclick="compartilharLista()">
+            <i class="ti ti-share"></i>
+          </button>
+          <button class="btn-primary" onclick="openModal()">
+            <i class="ti ti-plus"></i> Item
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="lista-container"></div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="val" id="total-itens">0</div>
+            <div class="lbl">Na lista</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="total-comprados">0</div>
+            <div class="lbl">Comprados</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="total-valor" style="font-size:14px">R$ 0</div>
+            <div class="lbl">Total</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;text-align:right">
+          <button onclick="clearComprados()" class="btn-danger" style="padding:6px 12px;font-size:12px">
+            <i class="ti ti-trash"></i> Limpar comprados
+          </button>
+        </div>
+      </div>
     </div>
+
+    <div id="tab-comprovante" class="section">
+      <div class="card" id="card-upload">
+        <div class="sep">Importar cupom fiscal ou texto</div>
+        <textarea id="paste-input" placeholder="Cole o texto do cupom fiscal, tabela markdown, CSV ou dados separados por ponto e vírgula aqui..." style="min-height:120px;margin-bottom:12px;font-family:monospace;font-size:12px;"></textarea>
+        <button class="btn-primary" onclick="importarTabela()" style="width:100%;justify-content:center">
+          <i class="ti ti-file-import"></i> Processar e Importar Texto
+        </button>
+      </div>
+      <div class="card" id="card-tabela" style="display:none"></div>
+      <div class="card">
+        <div style="display:flex;justify-content:between;align-items:center;margin-bottom:4px">
+          <span>Notas e Extratos salvos</span>
+          <span id="extratos-total-chip" style="font-size:11px;background:var(--green-light);color:var(--green-dark);padding:2px 8px;border-radius:99px;font-weight:600">0</span>
+        </div>
+        <div id="extratos-list"></div>
+      </div>
+    </div>
+
+    <div id="tab-orcamento" class="section">
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="metas-table">
+          <thead>
+            <tr>
+              <th>Metas / mês</th>
+              <th style="text-align:right">Progresso</th>
+            </tr>
+          </thead>
+          <tbody id="metas-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="sep">Comparador de mercados</div>
+        <div id="comparador-mercados"></div>
+      </div>
+    </div>
+
+    <div id="tab-relatorios" class="section">
+      <div class="card" id="r-total-extratos" style="display:none">
+        <div class="sep">Compras reais registradas</div>
+        <div class="real-total-banner">
+          <div>
+            <div class="rtb-label">Total gasto (extratos + lista)</div>
+            <div class="rtb-val" id="r-extratos-val">R$ 0</div>
+            <div class="rtb-sub" id="r-extratos-count"></div>
+          </div>
+          <i class="ti ti-receipt" style="font-size:32px;opacity:.4"></i>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sep">Resumo financeiro</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="metric">
+            <div class="val" id="r-total" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Total do mês</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-carne" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Carnes</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-verdura" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Verduras/Frutas</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-outros" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Outros</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sep">Gastos por Categoria</div>
+        <div id="chart-cats"></div>
+      </div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="btn-danger" onclick="exportarTxt()" style="width:100%;justify-content:center">
+          <i class="ti ti-download"></i> Exportar backup da lista (.txt)
+        </button>
+      </div>
+    </div>
+
+  </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getDatabase, ref, set, get, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-<script>
-// SUAS CREDENCIAIS CONFIGURADAS AQUI
-const firebaseConfig = {
-  apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
-  authDomain: "relatorio-de-compras.firebaseapp.com",
-  projectId: "relatorio-de-compras",
-  storageBucket: "relatorio-de-compras.firebasestorage.app",
-  messagingSenderId: "702964343593",
-  appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
-};
+  // Suas credenciais fornecidas
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
+    authDomain: "relatorio-de-compras.firebaseapp.com",
+    projectId: "relatorio-de-compras",
+    storageBucket: "relatorio-de-compras.firebasestorage.app",
+    messagingSenderId: "702964343593",
+    appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
+  };
 
-// Inicializando o Firebase
-const app = firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+  // Inicializa o Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+  const googleProvider = new GoogleAuthProvider();
 
-// O resto das suas funções JavaScript de lógica interna da Lista de Compras vem aqui...
-</script>
+  // Variáveis Globais de Estado do Sistema
+  window.items = [];
+  window.extratos = [];
+  window.metas = { carne:0, verdura:0, fruta:0, mercearia:0, limpeza:0, higiene:0, laticinio:0, padaria:0, bebida:0, outro:0 };
+  window.userId = null;
+  window.modalImgData = "";
+  window.currentReceiptData = null;
 
-</body>
-</html>
+  const catEmoji = { carne:"🥩", verdura:"🥬", fruta:"🍎", mercearia:"🛒", limpeza:"🧹", higiene:"🧴", laticinio:"🥛", padaria:"🍞", bebida:"🧃", outro:"📦" };
+  const catLabel = { carne:"Carne", verdura:"Verdura", fruta:"Fruta", mercearia:"Mercearia", limpeza:"Limpeza", higiene:"Higiene", laticinio:"Laticínio", padaria:"Padaria", bebida:"Bebida", outro:"Outro" };
+  const catColors = { carne:"#E24B4A", verdura:"#1D9E75", fruta:"#EF9F27", mercearia:"#4285F4", limpeza:"#9DA3B4", higiene:"#A06142", laticinio:"#5F9EA0", padaria:"#D2B48C", bebida:"#BA55D3", outro:"#778899" };
+
+  // Observador de Estado de Autenticação
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.userId = user.uid;
+      document.getElementById('login-overlay').style.display = 'none';
+      
+      // Vincula escuta em tempo real com o Firebase Realtime Database
+      const userRef = ref(db, 'users/' + window.userId);
+      onValue(userRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          window.items = data.items ? JSON.parse(data.items) : [];
+          window.extratos = data.extratos ? JSON.parse(data.extratos) : [];
+          window.metas = data.metas ? JSON.parse(data.metas) : { carne:0, verdura:0, fruta:0, mercearia:0, limpeza:0, higiene:0, laticinio:0, padaria:0, bebida:0, outro:0 };
+        } else {
+          window.items = [];
+          window.extratos = [];
+        }
+        renderLista();
+        renderExtratos();
+        renderMetas();
+        renderRelatorios();
+      });
+    } else {
+      window.userId = null;
+      document.getElementById('login-overlay').style.display = 'flex';
+    }
+  });
+
+  // Funções de Persistência em Nuvem (Substituindo o antigo LocalStorage)
+  let saveTimer = null;
+  async function save() {
+    if (!window.userId) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      try {
+        await set(ref(db, 'users/' + window.userId), {
+          items: JSON.stringify(window.items),
+          extratos: JSON.stringify(window.extratos),
+          metas: JSON.stringify(window.metas)
+        });
+        const ind = document.getElementById('save-ind');
+        ind.classList.add('show');
+        setTimeout(() => ind.classList.remove('show'), 1500);
+      } catch(e) {
+        console.error("Erro ao sincronizar dados com o Firebase:", e);
+      }
+    }, 400);
+  }
+
+  // Métodos de Autenticação expostos para o escopo global
+  window.fazerLogin = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    const senha = document.getElementById('login-senha').value;
+    if (!email || !senha) { mostrarErroLogin('Preencha e-mail e senha.'); return; }
+    
+    setLoadingLogin(true, 'Entrando...');
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch(err) {
+      mostrarErroLogin('E-mail ou senha inválidos.');
+      setLoadingLogin(false);
+    }
+  };
+
+  window.criarConta = async function() {
+    const email = document.getElementById('login-email').value.trim();
+    const senha = document.getElementById('login-senha').value;
+    if (!email || !senha || senha.length < 6) { mostrarErroLogin('Para cadastro insira e-mail e senha maior que 5 dígitos.'); return; }
+    
+    setLoadingLogin(true, 'Cadastrando...');
+    try {
+      await createUserWithEmailAndPassword(auth, email, senha);
+    } catch(err) {
+      mostrarErroLogin('Erro ao criar conta. E-mail pode já estar em uso.');
+      setLoadingLogin(false);
+    }
+  };
+
+  window.loginGoogle = async function() {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch(err) {
+      console.error(err);
+    }
+  };
+
+  window.logout = function() {
+    signOut(auth);
+  };
+
+  function mostrarErroLogin(msg) {
+    const err = document.getElementById('login-error');
+    err.textContent = msg;
+    err.classList.add('show');
+  }
+  window.clearLoginError = function() {
+    document.getElementById('login-error').classList.remove('show');
+  };
+
+  function setLoadingLogin(loading, txt='') {
+    const btn = document.getElementById('btn-login');
+    const box = document.querySelector('.login-box');
+    if(loading) {
+      box.classList.add('login-loading');
+      btn.innerHTML = `<span class="spin">⟳</span> ${txt}`;
+    } else {
+      box.classList.remove('login-loading');
+      btn.innerHTML = `<i class="ti ti-login"></i> Entrar`;
+    }
+  }
+
+  // ── CORE LOGIC DO APLICATIVO (Renderizadores e Operações Globais) ──
+  window.showTab = function(tabName, btnEl) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    btnEl.classList.add('active');
+  };
+
+  window.openModal = function() {
+    window.modalImgData = "";
+    document.getElementById('modal-img-preview').innerHTML = '<i class="ti ti-camera"></i><span>foto</span>';
+    document.getElementById('m-nome').value = "";
+    document.getElementById('m-preco').value = "";
+    document.getElementById('m-qtd').value = "1";
+    document.getElementById('modal-overlay').style.display = 'flex';
+    document.getElementById('m-nome').focus();
+  };
+
+  window.closeModal = function() {
+    document.getElementById('modal-overlay').style.display = 'none';
+  };
+
+  // Convertendo a Miniatura em String Base64 Localmente sem usar Storage
+  window.previewModalImg = function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    
+    // Redimensionamento básico em canvas para otimizar tamanho da string Base64 no banco
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        const max_size = 120; // 120px para miniaturas leves
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > max_size) { height *= max_size / width; width = max_size; }
+        } else {
+          if (height > max_size) { width *= max_size / height; height = max_size; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        window.modalImgData = canvas.toDataURL('image/jpeg', 0.7); // compressão leve
+        document.getElementById('modal-img-preview').innerHTML = `<img src="${window.modalImgData}">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.addItem = function() {
+    const nome = document.getElementById('m-nome').value.trim();
+    if (!nome) { document.getElementById('m-nome').focus(); return; }
+    const qtd = parseInt(document.getElementById('m-qtd').value) || 1;
+    const preco = parseFloat(document.getElementById('m-preco').value) || 0;
+    const cat = document.getElementById('m-cat').value;
+
+    window.items.push({
+      id: Date.now(),
+      nome, qtd, preco, cat,
+      img: window.modalImgData, // Salva o Base64 compactado direto no objeto do item
+      comprado: false,
+      data: new Date().toLocaleDateString('pt-BR'),
+      mercado: ''
+    });
+    save();
+    closeModal();
+  };
+
+  window.toggle = function(id) {
+    const it = window.items.find(i => i.id === id);
+    if (it) {
+      it.comprado = !it.comprado;
+      save();
+    }
+  };
+
+  window.removeItem = function(id) {
+    window.items = window.items.filter(i => i.id !== id);
+    save();
+  };
+
+  window.clearComprados = function() {
+    if (!window.items.some(i => i.comprado)) return;
+    window.items = window.items.filter(i => !i.comprado);
+    save();
+  };
+
+  function itemRow(it) {
+    const thumb = it.img ? `<img src="${it.img}" alt="foto">` : `<i class="ti ti-package" style="opacity:0.3"></i>`;
+    return `
+      <div class="item-row">
+        <div class="check-box ${it.comprado?'done':''}" onclick="toggle(${it.id})">
+          <i class="ti ti-check"></i>
+        </div>
+        <div class="item-thumb">${thumb}</div>
+        <div class="item-info">
+          <div class="item-name ${it.comprado?'done':''}">${it.nome}</div>
+          <div class="item-meta">
+            <span class="badge-cat">${catEmoji[it.cat]||'📦'} ${catLabel[it.cat]||it.cat}</span>
+            <span>• ${it.qtd}x</span>
+            <span>• ${it.preco>0 ? 'R$ '+it.preco.toFixed(2).replace('.',',') : 'Preço un. pendente'}</span>
+          </div>
+        </div>
+        <button onclick="removeItem(${it.id})" class="btn-danger btn-icon" style="border:none;background:transparent;"><i class="ti ti-trash"></i></button>
+      </div>
+    `;
+  }
+
+  window.renderLista = function() {
+    const filtro = document.getElementById('filtro-cat').value;
+    const filtered = filtro ? window.items.filter(i => i.cat === filtro) : window.items;
+    const comprar = filtered.filter(i => !i.comprado);
+    const comprados = filtered.filter(i => i.comprado);
+    
+    let html = '';
+    if (comprar.length === 0 && comprados.length === 0) {
+      html = '<div class="empty"><i class="ti ti-shopping-cart"></i>Lista vazia.<br>Toque em <strong>+ Item</strong> para começar.</div>';
+    }
+    if (comprar.length > 0) {
+      html += `<div class="sep"><span>Para comprar (${comprar.length})</span></div>`;
+      comprar.forEach(it => { html += itemRow(it); });
+    }
+    if (comprados.length > 0) {
+      html += `<div class="sep" style="margin-top:1rem"><span style="color:var(--green)">Comprados (${comprados.length})</span></div>`;
+      comprados.forEach(it => { html += itemRow(it); });
+    }
+    
+    document.getElementById('lista-container').innerHTML = html;
+    
+    const total = window.items.reduce((s,i) => s + (i.preco*i.qtd), 0);
+    document.getElementById('total-itens').textContent = window.items.length;
+    document.getElementById('total-comprados').textContent = window.items.filter(i => i.comprado).length;
+    document.getElementById('total-valor').textContent = 'R$ ' + total.toFixed(2).replace('.',',');
+  };
+
+  // ── LOGICA DE PROCESSAMENTO DE NOTAS E EXTRATOS COPIADOS ──
+  window.importarTabela = function() {
+    const raw = document.getElementById('paste-input').value.trim();
+    if (!raw) return;
+
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    const rows = [];
+    let total = null;
+    let date = null;
+
+    for (const line of lines) {
+      const mTotal = line.match(/total[^:]*:\s*\*?R\$\s*([\d.,]+)/i);
+      if (mTotal) total = parseFloat(mTotal[1].replace('.','').replace(',','.'));
+      const mDate = line.match(/data[^:]*:\s*\*?(\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4})/i);
+      if (mDate) {
+        date = mDate[1].replace(/[.\-]/g, '/');
+        const parts = date.split('/');
+        if (parts[2] && parts[2].length === 2) date = `${parts[0]}/${parts[1]}/20${parts[2]}`;
+      }
+    }
+
+    const dataLines = lines.filter(l => !l.match(/^[\s*\-_]+$/) && !l.match(/total[^:]*:/i) && !l.match(/data[^:]*:/i));
+    for (const line of dataLines) {
+      let cols;
+      if (line.includes('|')) cols = line.split('|').map(c => c.trim()).filter(c => c && !c.match(/^[-:]+$/));
+      else if (line.includes('\t')) cols = line.split('\t').map(c => c.trim());
+      else if (line.includes(';')) cols = line.split(';');
+      else cols = line.split(',');
+
+      if (cols.length < 2) continue;
+      let cat = '', nome, qtde, valor;
+      if (cols.length >= 4) [cat, nome, qtde, valor] = cols;
+      else [nome, qtde, valor] = cols;
+
+      if (!nome || nome.match(/^(item|produto|descrição|desc\.?)/i)) continue;
+      const valorNum = valor ? parseFloat(valor.replace(/[^\d,]/g,'').replace(',','.')) || 0 : 0;
+      rows.push({ cat: cat || 'outro', nome: nome, qtde: qtde || '1', valor: valorNum });
+    }
+
+    window.currentReceiptData = { rows, total, date, raw };
+    renderTabelaImportada(rows, total, date);
+  };
+
+  function renderTabelaImportada(rows, total, date) {
+    const calcTotal = rows.reduce((s, r) => s + r.valor, 0);
+    const displayTotal = total || calcTotal;
+    const displayDate = date || new Date().toLocaleDateString('pt-BR');
+
+    const chips = `
+      <div class="receipt-meta">
+        <span class="receipt-chip"><i class="ti ti-calendar"></i> ${displayDate}</span>
+        <span class="receipt-chip green"><i class="ti ti-receipt"></i> ${rows.length} itens</span>
+        <span class="receipt-chip green" style="font-weight:700">R$ ${displayTotal.toFixed(2).replace('.',',')}</span>
+      </div>`;
+
+    const tbody = rows.map((r, i) => `
+      <tr>
+        <td>
+          <select onchange="updateRowCat(${i}, this.value)" style="padding:4px;font-size:12px;">
+            ${Object.keys(catLabel).map(k => `<option value="${k}" ${r.cat===k?'selected':''}>${catEmoji[k]} ${catLabel[k]}</option>`).join('')}
+          </select>
+        </td>
+        <td>${r.nome}</td>
+        <td style="text-align:center">${r.qtde}</td>
+        <td style="text-align:right">${r.valor > 0 ? 'R$ ' + r.valor.toFixed(2).replace('.',',') : '—'}</td>
+      </tr>`).join('');
+
+    document.getElementById('card-tabela').innerHTML = `
+      <div class="sep">Itens Identificados</div>
+      ${chips}
+      <table class="receipt-table">
+        <thead><tr><th>Categoria</th><th>Item</th><th style="text-align:center">Qtd</th><th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${tbody}<tr class="total-row"><td colspan="3"><strong>TOTAL</strong></td><td style="text-align:right"><strong>R$ ${displayTotal.toFixed(2).replace('.',',')}</strong></td></tr></tbody>
+      </table>
+      <div style="margin-top:14px;display:flex;gap:8px;">
+        <button onclick="salvarExtrato()" class="btn-primary" style="flex:1;justify-content:center"><i class="ti ti-device-floppy"></i> Salvar</button>
+        <button onclick="resetarNota()">Limpar</button>
+      </div>
+    `;
+    document.getElementById('card-tabela').style.display = 'block';
+    document.getElementById('card-upload').style.display = 'none';
+  }
+
+  window.updateRowCat = function(idx, newCat) {
+    if (window.currentReceiptData && window.currentReceiptData.rows[idx]) {
+      window.currentReceiptData.rows[idx].cat = newCat;
+    }
+  };
+
+  window.resetarNota = function() {
+    window.currentReceiptData = null;
+    document.getElementById('paste-input').value = "";
+    document.getElementById('card-tabela').style.display = 'none';
+    document.getElementById('card-upload').style.display = 'block';
+  };
+
+  window.salvarExtrato = function() {
+    if (!window.currentReceiptData) return;
+    const { rows, total, date } = window.currentReceiptData;
+    const calcTotal = rows.reduce((s, r) => s + r.valor, 0);
+
+    window.extratos.unshift({
+      id: Date.now(),
+      date: date || new Date().toLocaleDateString('pt-BR'),
+      total: total || calcTotal,
+      rows
+    });
+    save();
+    window.resetarNota();
+  };
+
+  window.toggleExtrato = function(id) {
+    const body = document.getElementById('extrato-body-' + id);
+    body.classList.toggle('open');
+  };
+
+  window.removerExtrato = function(id) {
+    window.extratos = window.extratos.filter(e => e.id !== id);
+    save();
+  };
+
+  window.renderExtratos = function() {
+    document.getElementById('extratos-total-chip').textContent = window.extratos.length;
+    document.getElementById('extratos-list').innerHTML = window.extratos.map(e => `
+      <div class="extrato-card">
+        <div class="extrato-card-header" onclick="toggleExtrato(${e.id})">
+          <div class="extrato-card-left">
+            <div class="extrato-card-title">Cupom Fiscal de ${e.date}</div>
+            <div class="extrato-card-sub">${e.rows.length} produtos adicionados</div>
+          </div>
+          <div class="extrato-card-valor">R$ ${(e.total||0).toFixed(2).replace('.',',')}</div>
+        </div>
+        <div class="extrato-card-body" id="extrato-body-${e.id}">
+          <table class="receipt-table">
+            <tbody>
+              ${e.rows.map(r => `<tr><td>${catEmoji[r.cat]||'📦'} ${r.nome}</td><td>${r.qtde}x</td><td style="text-align:right">R$ ${r.valor.toFixed(2).replace('.',',')}</td></tr>`).join('')}
+            </tbody>
+          </table>
+          <button onclick="removerExtrato(${e.id})" class="btn-danger" style="margin-top:10px;padding:4px 8px;font-size:11px;"><i class="ti ti-trash"></i> Excluir Registro</button>
+        </div>
+      </div>
+    `).join('') || '<div class="empty">Nenhum cupom ou
