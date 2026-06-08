@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Lista de Compras</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBCFF-ogO9XJHzrv4Dd__pUr80NtyfVEuY",
+    authDomain: "relatorio-de-compras.firebaseapp.com",
+    projectId: "relatorio-de-compras",
+    storageBucket: "relatorio-de-compras.firebasestorage.app",
+    messagingSenderId: "702964343593",
+    appId: "1:702964343593:web:4d0ce528c06726f2b04d38"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // Expõe para o escopo global
+  window._firestore = db;
+  window._firestoreDoc = doc;
+  window._firestoreGetDoc = getDoc;
+  window._firestoreSetDoc = setDoc;
+  window._firestoreReady = true;
+  window.dispatchEvent(new Event('firestore-ready'));
+</script>
+<style>
+:root {
+  --font: 'DM Sans', sans-serif;
+  --green: #1D9E75;
+  --green-light: #E8F8F2;
+  --green-dark: #0F6E56;
+  --red: #E24B4A;
+  --red-light: #FEF0F0;
+  --bg: #F7F8FA;
+  --surface: #FFFFFF;
+  --border: #E8EAF0;
+  --border-light: #F0F2F7;
+  --text: #1A1D27;
+  --text-2: #6B7080;
+  --text-3: #9DA3B4;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── APP SHELL ── */
+.app {
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 0 0 80px;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--surface);
+  padding: 16px 16px 0;
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--shadow-sm);
+}
+.app-header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-header h1 span.logo-dot {
+  width: 8px; height: 8px;
+  background: var(--green);
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: 1;
+  min-width: 72px;
+  padding: 10px 6px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: var(--font);
+  font-weight: 500;
+  color: var(--text-3);
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.tab i { font-size: 17px; }
+.tab.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+/* ── CONTENT ── */
+.content { padding: 16px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+/* ── INPUTS ── */
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(29,158,117,0.1);
+}
+textarea { resize: vertical; min-height: 80px; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239DA3B4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+
+/* ── BUTTONS ── */
+button {
+  padding: 9px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--surface);
+  color: var(--text);
+  transition: background .15s, box-shadow .15s, transform .1s;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+button:active { transform: scale(0.97); }
+button:hover { background: var(--bg); }
+
+.btn-primary {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green-dark);
+  box-shadow: 0 2px 8px rgba(29,158,117,0.25), var(--shadow-sm);
+}
+.btn-primary:hover { background: var(--green-dark); }
+
+.btn-ghost-green {
+  background: var(--green-light);
+  color: var(--green-dark);
+  border-color: rgba(29,158,117,0.25);
+}
+.btn-ghost-green:hover { background: #d5f0e8; }
+
+.btn-danger {
+  background: var(--red-light);
+  color: var(--red);
+  border-color: rgba(226,75,74,0.2);
+  box-shadow: none;
+}
+.btn-danger:hover { background: #fde0e0; }
+.btn-icon {
+  padding: 8px;
+  min-width: 36px;
+  justify-content: center;
+}
+
+/* ── LABEL ── */
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+/* ── SECTION TITLE ── */
+.sep {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sep-line {
+  height: 1px;
+  background: var(--border-light);
+  margin: 16px 0;
+}
+
+/* ── METRIC GRID ── */
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.metric {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 12px 8px;
+  text-align: center;
+}
+.metric .val {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+.metric .lbl {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* ── ITEM ROW ── */
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.item-row:last-child { border-bottom: none; }
+
+.item-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+.check-box {
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s;
+  color: transparent;
+}
+.check-box.done {
+  background: var(--green);
+  border-color: var(--green-dark);
+  color: #fff;
+}
+
+.item-info { flex: 1; min-width: 0; }
+.item-name {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-name.done { text-decoration: line-through; color: var(--text-3); }
+.item-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+.badge-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text-2);
+}
+
+/* ── EMPTY STATE ── */
+.empty {
+  text-align: center;
+  color: var(--text-3);
+  font-size: 14px;
+  padding: 2.5rem 0;
+  line-height: 1.6;
+}
+.empty i { font-size: 36px; display: block; margin-bottom: 10px; opacity: .4; }
+
+/* ── UPLOAD AREA ── */
+.upload-area {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-2);
+  font-size: 14px;
+  transition: border-color .15s, background .15s;
+  margin-bottom: 12px;
+}
+.upload-area:hover { border-color: var(--green); background: var(--green-light); color: var(--green-dark); }
+.upload-area i { font-size: 30px; display: block; margin-bottom: 8px; opacity: .6; }
+
+/* ── AI BOX ── */
+.ai-box {
+  background: var(--green-light);
+  border: 1px solid rgba(29,158,117,0.25);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #085041;
+  white-space: pre-wrap;
+}
+
+/* ── PROGRESS BAR ── */
+.prog-bar {
+  height: 6px;
+  background: var(--bg);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.prog-fill { height: 100%; border-radius: 99px; transition: width .4s ease; }
+
+/* ── CHART BAR ── */
+.chart-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+.chart-bar-fill { height: 12px; border-radius: 99px; min-width: 4px; }
+.chart-bar-label { min-width: 90px; font-size: 12px; color: var(--text-2); }
+.chart-bar-val { font-size: 12px; color: var(--text-2); margin-left: 4px; white-space: nowrap; }
+
+/* ── SPIN ── */
+.spin { display: inline-block; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── SAVE INDICATOR ── */
+.save-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text);
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  white-space: nowrap;
+}
+.save-indicator.show { opacity: 1; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15,20,35,0.5);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.modal-box {
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  width: 100%;
+  max-width: 430px;
+  padding: 20px 16px 32px;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+.modal-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 99px;
+  margin: 0 auto 18px;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.modal-header h3 { font-size: 16px; font-weight: 600; }
+.modal-field { margin-bottom: 14px; }
+
+.img-upload-box {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  gap: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color .15s, background .15s;
+}
+.img-upload-box:hover { border-color: var(--green); background: var(--green-light); color: var(--green); }
+.img-upload-box img { width: 100%; height: 100%; object-fit: cover; }
+.img-upload-box i { font-size: 20px; }
+
+/* ── ROW HELPERS ── */
+.row { display: flex; gap: 10px; }
+.row > * { flex: 1; }
+.row-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 10px;
+}
+.filter-bar select {
+  width: auto;
+  padding: 8px 30px 8px 10px;
+  font-size: 13px;
+  flex: 1;
+}
+.filter-bar-btns { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* ── BOTTOM SAFE AREA ── */
+@media (max-width: 430px) {
+  .modal-box { border-radius: 20px 20px 0 0; }
+}
+
+/* ── RECEIPT TABLE ── */
+.receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 12px;
+}
+.receipt-table th {
+  background: var(--bg);
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 7px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.receipt-table th:last-child,
+.receipt-table td:last-child { text-align: right; }
+.receipt-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text);
+  vertical-align: middle;
+}
+.receipt-table tr:last-child td { border-bottom: none; }
+.receipt-table tr.total-row td {
+  font-weight: 600;
+  color: var(--green-dark);
+  background: var(--green-light);
+  border-top: 1.5px solid rgba(29,158,117,0.3);
+  font-size: 14px;
+}
+.receipt-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.receipt-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  color: var(--text-2);
+}
+.receipt-chip.green {
+  background: var(--green-light);
+  color: var(--green-dark);
+  border-color: rgba(29,158,117,0.3);
+}
+
+/* ── EXTRATO CARD ── */
+.extrato-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.extrato-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  gap: 10px;
+  border-bottom: 1px solid transparent;
+  transition: background .15s;
+}
+.extrato-card-header:hover { background: var(--bg); }
+.extrato-card-header.open { border-bottom-color: var(--border-light); }
+.extrato-card-left { flex: 1; min-width: 0; }
+.extrato-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.extrato-card-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.extrato-card-valor {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green-dark);
+  flex-shrink: 0;
+}
+.extrato-card-body {
+  padding: 12px 14px;
+  display: none;
+}
+.extrato-card-body.open { display: block; }
+
+/* ── UPLOAD STATES ── */
+.upload-area.has-img {
+  border-color: var(--green);
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+.upload-thumb {
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  margin-top: 8px;
+  display: block;
+}
+
+/* ── REAL TOTAL BANNER ── */
+.real-total-banner {
+  background: linear-gradient(135deg, var(--green-dark), var(--green));
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.real-total-banner .rtb-label { font-size: 12px; opacity: .85; font-weight: 500; }
+.real-total-banner .rtb-val { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+.real-total-banner .rtb-sub { font-size: 11px; opacity: .7; margin-top: 2px; }
+
+/* ── METAS TABLE ── */
+.metas-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.metas-table thead th {
+  background: var(--bg);
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.metas-table tbody tr {
+  border-bottom: 1px solid var(--border-light);
+}
+.metas-table tbody tr:last-child { border-bottom: none; }
+.metas-table tbody tr:hover { background: var(--bg); }
+
+.metas-table td {
+  padding: 10px 16px;
+  vertical-align: middle;
+}
+.metas-cat-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+.metas-cat-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 1px;
+}
+.metas-right {
+  text-align: right;
+  min-width: 160px;
+}
+.metas-input-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.metas-input-wrap input {
+  width: 90px;
+  text-align: right;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-xs);
+}
+.metas-progresso {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.metas-prog-bar {
+  width: 80px;
+  height: 4px;
+  background: var(--border-light);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.metas-prog-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .4s ease;
+}
+.metas-prog-label {
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: right;
+}
+.metas-gasto-label {
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: right;
+  margin-top: 2px;
+}
+.meta-saved-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  opacity: 0;
+  transition: opacity .3s;
+  flex-shrink: 0;
+}
+.meta-saved-dot.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="save-indicator" id="save-ind"><i class="ti ti-check"></i> Salvo</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>Novo item</h3>
+      <button onclick="closeModal()" style="padding:6px;background:var(--bg);border-radius:var(--radius-xs)" aria-label="fechar">
+        <i class="ti ti-x" style="font-size:16px"></i>
+      </button>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div class="img-upload-box" id="modal-img-preview" onclick="document.getElementById('modal-img-input').click()">
+        <i class="ti ti-camera"></i>
+        <span>foto</span>
+      </div>
+      <div style="flex:1">
+        <div class="modal-field">
+          <div class="label">Nome do produto *</div>
+          <input type="text" id="m-nome" placeholder="ex: Frango congelado" autofocus>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="modal-img-input" accept="image/*" style="display:none" onchange="previewModalImg(this)">
+
+    <div class="row">
+      <div class="modal-field">
+        <div class="label">Quantidade</div>
+        <input type="number" id="m-qtd" value="1" min="1">
+      </div>
+      <div class="modal-field">
+        <div class="label">Preço (R$)</div>
+        <input type="number" id="m-preco" placeholder="0,00" step="0.01" min="0">
+      </div>
+    </div>
+
+    <div class="modal-field">
+      <div class="label">Categoria</div>
+      <select id="m-cat">
+        <option value="carne">🥩 Carne</option>
+        <option value="verdura">🥬 Verdura</option>
+        <option value="fruta">🍎 Fruta</option>
+        <option value="mercearia">🛒 Mercearia</option>
+        <option value="limpeza">🧹 Limpeza</option>
+        <option value="higiene">🧴 Higiene</option>
+        <option value="laticinio">🥛 Laticínio</option>
+        <option value="padaria">🍞 Padaria</option>
+        <option value="bebida">🧃 Bebida</option>
+        <option value="outro">📦 Outro</option>
+      </select>
+    </div>
+
+    <div class="row-btns">
+      <button onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="addItem()"><i class="ti ti-plus"></i> Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+  <div class="app-header">
+    <h1><span class="logo-dot"></span> Lista de Compras</h1>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('lista',this)">
+        <i class="ti ti-list-check"></i> Lista
+      </button>
+      <button class="tab" onclick="showTab('comprovante',this)">
+        <i class="ti ti-receipt"></i> Nota
+      </button>
+      <button class="tab" onclick="showTab('orcamento',this)">
+        <i class="ti ti-target"></i> Metas
+      </button>
+      <button class="tab" onclick="showTab('relatorios',this)">
+        <i class="ti ti-chart-bar"></i> Dados
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- TAB: LISTA -->
+    <div id="tab-lista" class="section active">
+      <div class="filter-bar">
+        <select id="filtro-cat" onchange="renderLista()">
+          <option value="">Todas as categorias</option>
+          <option value="carne">🥩 Carne</option>
+          <option value="verdura">🥬 Verdura</option>
+          <option value="fruta">🍎 Fruta</option>
+          <option value="mercearia">🛒 Mercearia</option>
+          <option value="limpeza">🧹 Limpeza</option>
+          <option value="higiene">🧴 Higiene</option>
+          <option value="laticinio">🥛 Laticínio</option>
+          <option value="padaria">🍞 Padaria</option>
+          <option value="bebida">🧃 Bebida</option>
+          <option value="outro">📦 Outro</option>
+        </select>
+        <div class="filter-bar-btns">
+          <button class="btn-ghost-green" id="btn-compartilhar" onclick="compartilharLista()">
+            <i class="ti ti-share"></i>
+          </button>
+          <button class="btn-primary" onclick="openModal()">
+            <i class="ti ti-plus"></i> Item
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="lista-container"></div>
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="val" id="total-itens">0</div>
+            <div class="lbl">Na lista</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="total-comprados">0</div>
+            <div class="lbl">Comprados</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="total-valor" style="font-size:14px">R$ 0</div>
+            <div class="lbl">Total</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;text-align:right">
+          <button onclick="clearComprados()" style="font-size:12px;padding:5px 10px;color:var(--text-3);border-color:transparent;box-shadow:none;background:none">
+            <i class="ti ti-trash"></i> Limpar comprados
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: NOTAS (COMPROVANTE) -->
+    <div id="tab-comprovante" class="section">
+
+      <!-- LAYER 1: COLAR TABELA -->
+      <div class="card" id="card-colar">
+        <div class="sep">Colar extrato da compra</div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;line-height:1.6">
+          Cole abaixo a tabela copiada do sistema. Formatos aceitos: Markdown, Excel (tab) ou CSV.
+        </div>
+        <textarea id="paste-input" placeholder="Cole aqui a tabela…&#10;&#10;Exemplo:&#10;| Categoria | Item | Quantidade | Valor |&#10;| Mercearia | Arroz 5kg | 1 un | R$ 18,90 |&#10;* Valor total: R$ 18,90&#10;* Data da compra: 22.05.26" style="min-height:160px;font-family:monospace;font-size:12px;line-height:1.6;resize:vertical" oninput="onPasteInput()"></textarea>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button onclick="importarTabela()" class="btn-primary" id="btn-importar" style="flex:1;justify-content:center" disabled>
+            <i class="ti ti-table-import"></i> Importar tabela
+          </button>
+          <button onclick="limparCampo()" id="btn-limpar-campo" style="display:none;padding:9px 14px">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+        <div id="import-status" style="font-size:12px;margin-top:8px;color:var(--text-2)"></div>
+      </div>
+
+      <!-- LAYER 2: TABELA ESTRUTURADA -->
+      <div class="card" id="card-tabela" style="display:none">
+        <div class="sep">Itens identificados</div>
+        <div id="receipt-meta-chips" class="receipt-meta"></div>
+        <div style="overflow-x:auto">
+          <table class="receipt-table">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Item</th>
+                <th style="text-align:center">Qtde</th>
+                <th style="text-align:right">Unit.</th>
+                <th style="text-align:right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="receipt-tbody"></tbody>
+          </table>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="salvarExtrato()" class="btn-primary" style="flex:1;justify-content:center">
+            <i class="ti ti-device-floppy"></i> Salvar extrato
+          </button>
+          <button onclick="resetarNota()" style="padding:9px 14px">
+            <i class="ti ti-refresh"></i> Nova nota
+          </button>
+        </div>
+      </div>
+
+      <!-- LAYER 3: EXTRATOS SALVOS -->
+      <div id="extratos-section">
+        <div class="sep" style="margin-top:4px">
+          <span>Extratos salvos</span>
+          <span id="extratos-total-chip" style="font-size:11px;background:var(--green-light);color:var(--green-dark);padding:2px 8px;border-radius:99px;font-weight:600"></span>
+        </div>
+        <div id="extratos-list"></div>
+      </div>
+
+    </div>
+
+    <!-- TAB: ORÇAMENTO -->
+    <div id="tab-orcamento" class="section">
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="metas-table">
+          <thead>
+            <tr>
+              <th>Metas / mês</th>
+              <th style="text-align:right">Progresso</th>
+            </tr>
+          </thead>
+          <tbody id="metas-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="sep">Comparador de mercados</div>
+        <div id="comparador-mercados"></div>
+      </div>
+    </div>
+
+    <!-- TAB: RELATÓRIOS -->
+    <div id="tab-relatorios" class="section">
+
+      <!-- RESUMO EXTRATOS -->
+      <div class="card" id="r-total-extratos" style="display:none">
+        <div class="sep">Compras reais registradas</div>
+        <div class="real-total-banner">
+          <div>
+            <div class="rtb-label">Total gasto (extratos + lista)</div>
+            <div class="rtb-val" id="r-extratos-val">R$ 0</div>
+            <div class="rtb-sub" id="r-extratos-count"></div>
+          </div>
+          <i class="ti ti-receipt" style="font-size:32px;opacity:.4"></i>
+        </div>
+      </div>
+      <div class="card">
+        <div class="sep">Resumo financeiro</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="metric">
+            <div class="val" id="r-total" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Total do mês</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-carne" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Carnes</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-verdura" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Verduras/Frutas</div>
+          </div>
+          <div class="metric">
+            <div class="val" id="r-outros" style="font-size:16px">R$ 0</div>
+            <div class="lbl">Outros</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="sep">Gastos por categoria</div>
+        <div id="chart-cats"></div>
+      </div>
+
+      <div class="card">
+        <div class="sep">Variação de preços</div>
+        <div id="price-history"></div>
+      </div>
+
+      <div class="card">
+        <div class="sep">Análise com IA</div>
+        <button class="btn-primary" onclick="gerarRelatorioAI()" id="btn-relatorio">
+          <i class="ti ti-sparkles"></i> Gerar análise inteligente
+        </button>
+        <div id="ai-relatorio"></div>
+      </div>
+
+      <div class="card">
+        <div class="sep">Exportar</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="exportarTexto()">
+            <i class="ti ti-file-text"></i> Exportar texto
+          </button>
+          <button onclick="sendPromptFn('Com base na minha lista de compras, me dá dicas práticas de economia para o supermercado no Brasil')">
+            <i class="ti ti-message"></i> Dicas de economia ↗
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<script>
+const KEYS = { items:'lista_items_v2', hist:'lista_hist_v2', metas:'lista_metas_v2', extratos:'lista_extratos_v1' };
+let items = []; let historico = []; let extratos = []; let currentReceiptData = null; let modalImgData = null;
+let metas = { carne:300, verdura:150, fruta:80, mercearia:200, limpeza:100, higiene:80, laticinio:120, padaria:60, bebida:80, outro:100 };
+
+const catEmoji = { carne:'🥩', verdura:'🥬', fruta:'🍎', mercearia:'🛒', limpeza:'🧹', higiene:'🧴', laticinio:'🥛', padaria:'🍞', bebida:'🧃', outro:'📦' };
+const catColors = { carne:'#E24B4A', verdura:'#639922', fruta:'#EF9F27', mercearia:'#7F77DD', limpeza:'#1D9E75', higiene:'#378ADD', laticinio:'#D4537E', padaria:'#D85A30', bebida:'#BA7517', outro:'#888780' };
+
+function sendPromptFn(text) { if (typeof sendPrompt === 'function') sendPrompt(text); }
+
+// ── COMPRESSÃO DE IMAGEM PARA BASE64 MINIATURA ────────────────
+function compressImgToBase64(file, maxW = 120, maxH = 120, quality = 0.72) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        const ratio = Math.min(maxW / w, maxH / h, 1);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── FIRESTORE HELPERS ─────────────────────────────────────────
+const FS_DOC_ID = 'dados_lista_v1';
+
+async function waitFirestore() {
+  if (window._firestoreReady) return;
+  await new Promise(res => window.addEventListener('firestore-ready', res, { once: true }));
+}
+
+async function fsGet(field) {
+  try {
+    await waitFirestore();
+    const ref = window._firestoreDoc(window._firestore, 'lista_compras', FS_DOC_ID);
+    const snap = await window._firestoreGetDoc(ref);
+    if (snap.exists()) { const d = snap.data(); return d[field] || null; }
+    return null;
+  } catch(e) {
+    // fallback localStorage
+    try { return localStorage.getItem('fs_' + field); } catch(_) { return null; }
+  }
+}
+
+async function fsSaveAll() {
+  try {
+    await waitFirestore();
+    const ref = window._firestoreDoc(window._firestore, 'lista_compras', FS_DOC_ID);
+    await window._firestoreSetDoc(ref, {
+      [KEYS.items]:   JSON.stringify(items),
+      [KEYS.hist]:    JSON.stringify(historico),
+      [KEYS.metas]:   JSON.stringify(metas),
+      [KEYS.extratos]:JSON.stringify(extratos),
+      updated_at:     new Date().toISOString()
+    }, { merge: true });
+  } catch(e) {
+    // fallback localStorage
+    try {
+      localStorage.setItem('fs_' + KEYS.items,   JSON.stringify(items));
+      localStorage.setItem('fs_' + KEYS.hist,     JSON.stringify(historico));
+      localStorage.setItem('fs_' + KEYS.metas,    JSON.stringify(metas));
+      localStorage.setItem('fs_' + KEYS.extratos, JSON.stringify(extratos));
+    } catch(_) {}
+  }
+}
+
+async function loadData() {
+  try {
+    await waitFirestore();
+    const ref = window._firestoreDoc(window._firestore, 'lista_compras', FS_DOC_ID);
+    const snap = await window._firestoreGetDoc(ref);
+    if (snap.exists()) {
+      const d = snap.data();
+      if (d[KEYS.items])   items    = JSON.parse(d[KEYS.items]);
+      if (d[KEYS.hist])    historico= JSON.parse(d[KEYS.hist]);
+      if (d[KEYS.metas])   metas    = JSON.parse(d[KEYS.metas]);
+      if (d[KEYS.extratos])extratos = JSON.parse(d[KEYS.extratos]);
+    }
+  } catch(e) {
+    // fallback localStorage
+    try {
+      const ri = localStorage.getItem('fs_' + KEYS.items);
+      const rh = localStorage.getItem('fs_' + KEYS.hist);
+      const rm = localStorage.getItem('fs_' + KEYS.metas);
+      const re = localStorage.getItem('fs_' + KEYS.extratos);
+      if (ri) items    = JSON.parse(ri);
+      if (rh) historico= JSON.parse(rh);
+      if (rm) metas    = JSON.parse(rm);
+      if (re) extratos = JSON.parse(re);
+    } catch(_) {}
+  }
+  renderLista(); renderExtratos();
+}
+
+let saveTimer = null;
+async function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await fsSaveAll();
+      const ind = document.getElementById('save-ind');
+      ind.classList.add('show');
+      setTimeout(() => ind.classList.remove('show'), 1500);
+    } catch(e) {}
+  }, 400);
+}
+
+function compartilharLista() {
+  const comprar = items.filter(i => !i.comprado);
+  const comprados = items.filter(i => i.comprado);
+  if (items.length === 0) { alert('A lista está vazia!'); return; }
+  const data = new Date().toLocaleDateString('pt-BR');
+  let txt = `🛒 *LISTA DE COMPRAS* — ${data}\n`;
+  const total = items.reduce((s,i) => s + (i.preco * i.qtd), 0);
+  if (total > 0) txt += `💰 Total estimado: R$ ${total.toFixed(2).replace('.',',')}\n`;
+  txt += `\n`;
+  if (comprar.length > 0) {
+    txt += `📋 *Para comprar (${comprar.length}):*\n`;
+    comprar.forEach(it => {
+      txt += `• ${catEmoji[it.cat]||''} ${it.nome} — ${it.qtd}x`;
+      if (it.preco > 0) txt += ` (R$ ${(it.preco*it.qtd).toFixed(2).replace('.',',')})`;
+      txt += `\n`;
+    });
+  }
+  if (comprados.length > 0) {
+    txt += `\n✅ *Já comprados (${comprados.length}):*\n`;
+    comprados.forEach(it => { txt += `~${it.nome}~\n`; });
+  }
+  if (navigator.share) {
+    navigator.share({ title:'Lista de Compras', text:txt }).catch(() => copiarTexto(txt));
+  } else {
+    copiarTexto(txt);
+  }
+}
+
+function copiarTexto(txt) {
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.getElementById('btn-compartilhar');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<i class="ti ti-check"></i>';
+    btn.style.background = 'var(--green)'; btn.style.color = '#fff';
+    setTimeout(() => { btn.innerHTML = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+  }).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    alert('Lista copiada! Cole no WhatsApp 😊');
+  });
+}
+
+function showTab(t, btn) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  btn.classList.add('active');
+  if (t === 'relatorios') renderRelatorios();
+  if (t === 'orcamento') renderOrcamento();
+  if (t === 'comprovante') renderExtratos();
+}
+
+function openModal() {
+  modalImgData = null;
+  document.getElementById('m-nome').value = '';
+  document.getElementById('m-qtd').value = '1';
+  document.getElementById('m-preco').value = '';
+  document.getElementById('m-cat').value = 'carne';
+  document.getElementById('modal-img-preview').innerHTML = '<i class="ti ti-camera"></i><span>foto</span>';
+  document.getElementById('modal-overlay').style.display = 'flex';
+  setTimeout(() => document.getElementById('m-nome').focus(), 100);
+}
+
+function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+async function previewModalImg(input) {
+  const file = input.files[0]; if (!file) return;
+  const compressed = await compressImgToBase64(file, 120, 120, 0.72);
+  modalImgData = compressed;
+  document.getElementById('modal-img-preview').innerHTML = `<img src="${compressed}" alt="foto do produto">`;
+}
+
+function addItem() {
+  const nome = document.getElementById('m-nome').value.trim();
+  if (!nome) { document.getElementById('m-nome').focus(); return; }
+  const qtd = parseInt(document.getElementById('m-qtd').value) || 1;
+  const preco = parseFloat(document.getElementById('m-preco').value) || 0;
+  const cat = document.getElementById('m-cat').value;
+  items.push({ id:Date.now(), nome, qtd, preco, cat, img:modalImgData, comprado:false, data:new Date().toLocaleDateString('pt-BR'), mercado:'' });
+  save(); renderLista(); closeModal();
+}
+
+function toggle(id) { const it = items.find(i => i.id === id); if (it) { it.comprado = !it.comprado; save(); renderLista(); } }
+function removeItem(id) { items = items.filter(i => i.id !== id); save(); renderLista(); }
+function clearComprados() { if (!items.some(i => i.comprado)) return; items = items.filter(i => !i.comprado); save(); renderLista(); }
+
+function renderLista() {
+  const filtro = document.getElementById('filtro-cat').value;
+  const filtered = filtro ? items.filter(i => i.cat === filtro) : items;
+  const comprar = filtered.filter(i => !i.comprado);
+  const comprados = filtered.filter(i => i.comprado);
+  let html = '';
+  if (comprar.length === 0 && comprados.length === 0) {
+    html = '<div class="empty"><i class="ti ti-shopping-cart"></i>Lista vazia.<br>Toque em <strong>+ Item</strong> para começar.</div>';
+  }
+  if (comprar.length > 0) {
+    html += `<div class="sep"><span>Para comprar (${comprar.length})</span></div>`;
+    comprar.forEach(it => { html += itemRow(it); });
+  }
+  if (comprados.length > 0) {
+    html += `<div class="sep" style="margin-top:1rem"><span style="color:var(--green)">Comprados (${comprados.length})</span></div>`;
+    comprados.forEach(it => { html += itemRow(it); });
+  }
+  document.getElementById('lista-container').innerHTML = html;
+  const total = items.reduce((s,i) => s + (i.preco*i.qtd), 0);
+  document.getElementById('total-itens').textContent = items.length;
+  document.getElementById('total-comprados').textContent = items.filter(i => i.comprado).length;
+  document.getElementById('total-valor').textContent = 'R$ ' + total.toFixed(2).replace('.',',');
+}
+
+function itemRow(it) {
+  const img = it.img ? `<img src="${it.img}" alt="${it.nome}">` : `<span>${catEmoji[it.cat]||'📦'}</span>`;
+  const totalVal = it.preco > 0 ? `R$ ${(it.preco*it.qtd).toFixed(2).replace('.',',')}` : '';
+  return `<div class="item-row">
+    <div class="check-box ${it.comprado?'done':''}" onclick="toggle(${it.id})" role="checkbox" aria-checked="${it.comprado}">
+      ${it.comprado ? '<i class="ti ti-check" style="font-size:12px"></i>' : ''}
+    </div>
+    <div class="item-thumb">${img}</div>
+    <div class="item-info">
+      <div class="item-name ${it.comprado?'done':''}">${it.nome}</div>
+      <div class="item-meta">
+        <span>${it.qtd}x</span>
+        <span class="badge-cat">${catEmoji[it.cat]||'📦'} ${it.cat}</span>
+        ${totalVal ? `<span style="font-weight:500;color:var(--text)">${totalVal}</span>` : ''}
+      </div>
+    </div>
+    <button onclick="removeItem(${it.id})" class="btn-danger btn-icon" aria-label="remover">
+      <i class="ti ti-trash" style="font-size:14px"></i>
+    </button>
+  </div>`;
+}
+
+// ── NOTAS: COLAR TABELA ──────────────────────────────────────
+
+function onPasteInput() {
+  const val = document.getElementById('paste-input').value.trim();
+  const btn = document.getElementById('btn-importar');
+  const clear = document.getElementById('btn-limpar-campo');
+  btn.disabled = val.length < 5;
+  clear.style.display = val.length > 0 ? 'inline-flex' : 'none';
+  document.getElementById('import-status').textContent = '';
+}
+
+function limparCampo() {
+  document.getElementById('paste-input').value = '';
+  document.getElementById('btn-importar').disabled = true;
+  document.getElementById('btn-limpar-campo').style.display = 'none';
+  document.getElementById('import-status').textContent = '';
+}
+
+function parsePastedTable(raw) {
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  const rows = [];
+  let total = null;
+  let date = null;
+
+  // detectar data e total nas linhas de rodapé
+  for (const line of lines) {
+    const mTotal = line.match(/total[^:]*:\s*\*?R\$\s*([\d.,]+)/i);
+    if (mTotal) { total = parseFloat(mTotal[1].replace('.','').replace(',','.')); }
+    const mDate = line.match(/data[^:]*:\s*\*?(\d{1,2}[.\/\-]\d{1,2}[.\/\-]\d{2,4})/i);
+    if (mDate) {
+      // normalizar para dd/mm/aa ou dd/mm/yyyy
+      date = mDate[1].replace(/[.\-]/g, '/');
+      const parts = date.split('/');
+      if (parts[2] && parts[2].length === 2) date = `${parts[0]}/${parts[1]}/20${parts[2]}`;
+    }
+  }
+
+  // detectar separador: tab, pipe (markdown), ponto-e-vírgula, vírgula
+  const dataLines = lines.filter(l => !l.match(/^[\s*\-_]+$/) && !l.match(/total[^:]*:/i) && !l.match(/data[^:]*:/i));
+
+  for (const line of dataLines) {
+    let cols;
+    if (line.includes('|')) {
+      // markdown table
+      cols = line.split('|').map(c => c.trim()).filter(c => c && !c.match(/^[-:]+$/));
+    } else if (line.includes('\t')) {
+      cols = line.split('\t').map(c => c.trim());
+    } else if (line.includes(';')) {
+      cols = line.split(';').map(c => c.trim());
+    } else {
+      cols = line.split(',').map(c => c.trim());
+    }
+    if (cols.length < 2) continue;
+
+    // detectar se primeira coluna é categoria (4 colunas) ou item (3 colunas)
+    let cat = '', nome, qtde, valor;
+    if (cols.length >= 4) {
+      [cat, nome, qtde, valor] = cols;
+    } else {
+      [nome, qtde, valor] = cols;
+    }
+    // pular linha de cabeçalho
+    if (!nome || nome.match(/^(item|produto|descrição|desc\.?)/i)) continue;
+    if (cat && cat.match(/^(categoria|cat\.?)/i)) continue;
+
+    const valorNum = valor ? parseFloat(valor.replace(/[^\d,]/g,'').replace(',','.')) || 0 : 0;
+    rows.push({ cat: cat || '', nome: nome, qtde: qtde || '1', valor: valorNum });
+  }
+
+  return { rows, total, date };
+}
+
+function importarTabela() {
+  const raw = document.getElementById('paste-input').value.trim();
+  if (!raw) return;
+
+  const { rows, total, date } = parsePastedTable(raw);
+  if (rows.length === 0) {
+    document.getElementById('import-status').innerHTML = '<span style="color:var(--red)">⚠ Não foi possível identificar itens. Verifique o formato.</span>';
+    return;
+  }
+
+  currentReceiptData = { rows, total, date, raw };
+  renderTabelaImportada(rows, total, date);
+  document.getElementById('card-tabela').style.display = 'block';
+  document.getElementById('card-tabela').scrollIntoView({ behavior:'smooth', block:'start' });
+  document.getElementById('import-status').innerHTML = `<span style="color:var(--green)">✓ ${rows.length} itens identificados.</span>`;
+}
+
+function catSelectHtml(rowIdx, selectedCat) {
+  const opts = [
+    ['carne','🥩 Carne'],['verdura','🥬 Verdura'],['fruta','🍎 Fruta'],
+    ['mercearia','🛒 Mercearia'],['limpeza','🧹 Limpeza'],['higiene','🧴 Higiene'],
+    ['laticinio','🥛 Laticínio'],['padaria','🍞 Padaria'],['bebida','🧃 Bebida'],['outro','📦 Outro']
+  ];
+  // auto-detect category from raw text if not yet mapped
+  const mapped = selectedCat ? mapCatFromText(selectedCat) : 'outro';
+  return `<select
+    style="padding:4px 24px 4px 6px;font-size:12px;min-width:110px;border-radius:6px;background-color:var(--bg)"
+    onchange="updateRowCat(${rowIdx}, this.value)"
+    aria-label="Categoria">
+    ${opts.map(([val, label]) => `<option value="${val}"${mapped===val?' selected':''}>${label}</option>`).join('')}
+  </select>`;
+}
+
+function updateRowCat(rowIdx, newCat) {
+  if (currentReceiptData && currentReceiptData.rows[rowIdx]) {
+    currentReceiptData.rows[rowIdx].cat = newCat;
+  }
+}
+
+function renderTabelaImportada(rows, total, date) {
+  const calcTotal = rows.reduce((s, r) => s + r.valor, 0);
+  const displayTotal = total || calcTotal;
+  const displayDate = date || new Date().toLocaleDateString('pt-BR');
+
+  const chips = `
+    <div class="receipt-meta">
+      <span class="receipt-chip"><i class="ti ti-calendar" style="font-size:12px"></i> ${displayDate}</span>
+      <span class="receipt-chip green"><i class="ti ti-receipt" style="font-size:12px"></i> ${rows.length} itens</span>
+      <span class="receipt-chip green" style="font-weight:700">R$ ${displayTotal.toFixed(2).replace('.',',')}</span>
+    </div>`;
+
+  const tbody = rows.map((r, i) => `
+    <tr>
+      <td>${catSelectHtml(i, r.cat || r.nome)}</td>
+      <td>${r.nome}</td>
+      <td style="text-align:center">${r.qtde}</td>
+      <td style="text-align:right">${r.valor > 0 ? 'R$ ' + r.valor.toFixed(2).replace('.',',') : '—'}</td>
+    </tr>`).join('');
+
+  const totalRow = `<tr class="total-row"><td colspan="3"><strong>TOTAL</strong></td><td style="text-align:right"><strong>R$ ${displayTotal.toFixed(2).replace('.',',')}</strong></td></tr>`;
+
+  document.getElementById('card-tabela').innerHTML = `
+    <div class="sep">Itens identificados <span style="font-size:11px;font-weight:400;color:var(--green-dark);text-transform:none;letter-spacing:0">— edite as categorias antes de salvar</span></div>
+    ${chips}
+    <div style="overflow-x:auto">
+      <table class="receipt-table">
+        <thead><tr><th>Categoria</th><th>Item</th><th style="text-align:center">Qtde</th><th style="text-align:right">Valor</th></tr></thead>
+        <tbody>${tbody}${totalRow}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="salvarExtrato()" class="btn-primary" style="flex:1;justify-content:center">
+        <i class="ti ti-device-floppy"></i> Salvar extrato
+      </button>
+      <button onclick="resetarNota()" style="padding:9px 14px">
+        <i class="ti ti-refresh"></i> Nova nota
+      </button>
+    </div>`;
+}
+
+function salvarExtrato() {
+  if (!currentReceiptData) return;
+  // sync any category selects that may not have fired onchange
+  document.querySelectorAll('#card-tabela select[onchange^="updateRowCat"]').forEach(sel => {
+    const match = sel.getAttribute('onchange').match(/updateRowCat\((\d+)/);
+    if (match) updateRowCat(parseInt(match[1]), sel.value);
+  });
+  const { rows, total, date, raw } = currentReceiptData;
+  const calcTotal = rows.reduce((s, r) => s + r.valor, 0);
+  extratos.unshift({
+    id: Date.now(),
+    date: date || new Date().toLocaleDateString('pt-BR'),
+    total: total || calcTotal,
+    rows,
+    raw
+  });
+  save();
+  renderExtratos();
+  resetarNota();
+  document.getElementById('import-status').innerHTML = '<span style="color:var(--green)">✓ Extrato salvo com sucesso!</span>';
+}
+
+function resetarNota() {
+  currentReceiptData = null;
+  document.getElementById('paste-input').value = '';
+  document.getElementById('btn-importar').disabled = true;
+  document.getElementById('btn-limpar-campo').style.display = 'none';
+  document.getElementById('card-tabela').style.display = 'none';
+  document.getElementById('card-tabela').innerHTML = '';
+}
+
+function renderExtratos() {
+  const el = document.getElementById('extratos-list');
+  const chip = document.getElementById('extratos-total-chip');
+
+  if (extratos.length === 0) {
+    el.innerHTML = '<div class="empty"><i class="ti ti-receipt"></i>Nenhum extrato salvo ainda</div>';
+    chip.textContent = '';
+    return;
+  }
+
+  const totalGeral = extratos.reduce((s, e) => s + (e.total || 0), 0);
+  chip.textContent = `${extratos.length} • R$ ${totalGeral.toFixed(2).replace('.',',')}`;
+
+  el.innerHTML = extratos.map(e => `
+    <div class="extrato-card">
+      <div class="extrato-card-header" onclick="toggleExtrato(${e.id}, this)">
+        <div class="extrato-card-left">
+          <div class="extrato-card-title"><i class="ti ti-receipt" style="font-size:13px;margin-right:5px;color:var(--text-3)"></i>${e.date}</div>
+          <div class="extrato-card-sub">${e.rows.length} itens</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="extrato-card-valor">R$ ${(e.total||0).toFixed(2).replace('.',',')}</span>
+          <button onclick="event.stopPropagation();removerExtrato(${e.id})" class="btn-danger btn-icon" style="flex-shrink:0" aria-label="remover">
+            <i class="ti ti-trash" style="font-size:13px"></i>
+          </button>
+        </div>
+      </div>
+      <div class="extrato-card-body" id="extrato-body-${e.id}">
+        ${(() => { const hasCat = e.rows.some(r => r.cat && r.cat.trim()); const colspan = hasCat ? 3 : 2; return `<table class="receipt-table">
+          <thead><tr>${hasCat ? '<th>Categoria</th>' : ''}<th>Item</th><th style="text-align:center">Qtde</th><th style="text-align:right">Valor</th></tr></thead>
+          <tbody>
+            ${e.rows.map(r => `<tr>${hasCat ? `<td style="color:var(--text-2);font-size:12px">${r.cat || '—'}</td>` : ''}<td>${r.nome}</td><td style="text-align:center">${r.qtde}</td><td style="text-align:right">${r.valor > 0 ? 'R$ ' + r.valor.toFixed(2).replace('.',',') : '—'}</td></tr>`).join('')}
+            <tr class="total-row"><td colspan="${colspan}"><strong>TOTAL</strong></td><td style="text-align:right"><strong>R$ ${(e.total||0).toFixed(2).replace('.',',')}</strong></td></tr>
+          </tbody>
+        </table>`; })()}
+      </div>
+    </div>`).join('');
+}
+
+function toggleExtrato(id, header) {
+  const body = document.getElementById('extrato-body-' + id);
+  const isOpen = body.classList.toggle('open');
+  header.classList.toggle('open', isOpen);
+}
+
+function removerExtrato(id) {
+  extratos = extratos.filter(e => e.id !== id);
+  save(); renderExtratos();
+}
+
+function renderHistorico() { renderExtratos(); }
+
+function handleComprovante() {}
+function transcribeReceipt() {}
+function saveToHistory() {}
+
+// ── GASTOS COMBINADOS: lista + extratos salvos ────────────────
+const catKeywords = {
+  carne:     ['carne','frango','peixe','pesc','bovina','suína','suino','linguiça','linguica','presunto','salsicha','bacon','costela','alcatra','contrafile','file','atum','sardinha','camarao'],
+  verdura:   ['verdura','alface','rucula','espinafre','brocolis','couve','cebola','alho','tomate','pepino','abobrinha','berinjela','cenoura','beterraba','piment','mandioc','batata','inhame','chuchu'],
+  fruta:     ['fruta','maca','banana','uva','laranja','limao','abacaxi','manga','mamao','melancia','melao','morango','kiwi','pera','ameixa','caqui','goiaba'],
+  mercearia: ['arroz','feijao','macarrao','massa','farinha','acucar','sal','oleo','azeite','molho','extrato','caldo','lata','conserva','enlatado','milho','ervilha','grao','cereal','granola','aveia','cafe','cha','biscoito','bolacha','salgadinho','snack','mercearia'],
+  limpeza:   ['limpeza','detergente','sabão','sabao','amaciante','desinfetante','multiuso','esponja','vassoura','rodo','pano','papel toalha','papel higiénico','papel higienico','limpador','alvejante','cloro','inseticida','repelente'],
+  higiene:   ['higiene','shampoo','condicionador','sabonete','creme','hidratante','pasta','escova','fio dental','desodoran','perfume','maquiagem','absorvente','frald','algodao','cotonete'],
+  laticinio: ['leite','iogurte','queijo','manteiga','margarina','creme de leite','requeijao','nata','lacteo','laticinio'],
+  padaria:   ['pao','paes','bolo','torta','croissant','cuca','rosca','broa','padaria','bisnaguinha','forma'],
+  bebida:    ['agua','suco','refrigerante','cerveja','vinho','vodka','whisky','cachaca','energetico','isotônico','isotonico','bebida','guarana','coca','pepsi','sprite','fanta'],
+  outro:     []
+};
+
+function mapCatFromText(text) {
+  if (!text) return 'outro';
+  const t = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  for (const [cat, keywords] of Object.entries(catKeywords)) {
+    if (cat === 'outro') continue;
+    if (keywords.some(k => t.includes(k.normalize('NFD').replace(/[\u0300-\u036f]/g,'')))) return cat;
+  }
+  return 'outro';
+}
+
+function getGastosCombinados() {
+  // Gastos da lista de itens
+  const gastos = {};
+  items.forEach(it => { gastos[it.cat] = (gastos[it.cat] || 0) + (it.preco * it.qtd); });
+
+  // Gastos dos extratos salvos (por categoria mapeada ou texto do campo cat)
+  extratos.forEach(e => {
+    e.rows.forEach(r => {
+      const valorNum = typeof r.valor === 'number' ? r.valor : parseFloat((r.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.')) || 0;
+      if (valorNum <= 0) return;
+      // tenta mapear pelo campo cat primeiro, depois pelo nome do item
+      const catMapped = mapCatFromText(r.cat) !== 'outro' ? mapCatFromText(r.cat) : mapCatFromText(r.nome);
+      gastos[catMapped] = (gastos[catMapped] || 0) + valorNum;
+    });
+  });
+
+  return gastos;
+}
+
+function renderOrcamento() {
+  const gastos = getGastosCombinados();
+  const cats = Object.keys(metas);
+  const catLabel = {
+    carne:'Carne', verdura:'Verdura', fruta:'Fruta', mercearia:'Mercearia',
+    limpeza:'Limpeza', higiene:'Higiene', laticinio:'Laticínio', padaria:'Padaria', bebida:'Bebida', outro:'Outro'
+  };
+  document.getElementById('metas-tbody').innerHTML = cats.map(c => {
+    const g = gastos[c] || 0;
+    const m = metas[c];
+    const pct = m > 0 ? Math.min(100, Math.round(g / m * 100)) : 0;
+    const cor = pct > 90 ? '#E24B4A' : pct > 70 ? '#EF9F27' : '#1D9E75';
+    const gastoStr = g > 0 ? `R$ ${g.toFixed(2).replace('.',',')}` : 'R$ 0,00';
+    const temExtratos = extratos.length > 0;
+    const subLabel = temExtratos ? `${gastoStr} gasto <span style="color:var(--green-dark);font-size:10px">(lista+extratos)</span>` : `${gastoStr} gasto`;
+    return `<tr>
+      <td>
+        <div class="metas-cat-label">
+          <span style="font-size:18px">${catEmoji[c]||'📦'}</span>
+          <div>
+            <div>${catLabel[c]||c}</div>
+            <div class="metas-cat-sub">${subLabel}</div>
+          </div>
+        </div>
+      </td>
+      <td class="metas-right">
+        <div class="metas-input-wrap">
+          <span class="meta-saved-dot" id="dot-${c}"></span>
+          <span style="font-size:11px;color:var(--text-3)">R$</span>
+          <input type="number" id="meta-${c}" value="${m}" min="0" step="10"
+            oninput="autoSalvarMeta('${c}')" onchange="autoSalvarMeta('${c}')">
+        </div>
+        <div class="metas-progresso">
+          <span class="metas-prog-label" style="color:${cor}" id="pct-${c}">${pct}%</span>
+          <div class="metas-prog-bar"><div class="metas-prog-fill" id="fill-${c}" style="width:${pct}%;background:${cor}"></div></div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  renderComparador();
+}
+
+let _metaTimers = {};
+function autoSalvarMeta(c) {
+  clearTimeout(_metaTimers[c]);
+  _metaTimers[c] = setTimeout(() => {
+    const el = document.getElementById('meta-' + c);
+    if (el) metas[c] = parseFloat(el.value) || 0;
+    save();
+    // update progress inline
+    const gastos = getGastosCombinados();
+    const g = gastos[c] || 0; const m = metas[c];
+    const pct = m > 0 ? Math.min(100, Math.round(g / m * 100)) : 0;
+    const cor = pct > 90 ? '#E24B4A' : pct > 70 ? '#EF9F27' : '#1D9E75';
+    const fillEl = document.getElementById('fill-' + c);
+    const pctEl = document.getElementById('pct-' + c);
+    if (fillEl) { fillEl.style.width = pct + '%'; fillEl.style.background = cor; }
+    if (pctEl) { pctEl.textContent = pct + '%'; pctEl.style.color = cor; }
+    // show saved dot
+    const dot = document.getElementById('dot-' + c);
+    if (dot) { dot.classList.add('show'); setTimeout(() => dot.classList.remove('show'), 1200); }
+  }, 600);
+}
+
+function salvarMetas() {
+  Object.keys(metas).forEach(c => { const el = document.getElementById('meta-' + c); if (el) metas[c] = parseFloat(el.value) || 0; });
+  save();
+}
+
+function renderProgresso() {
+  // now handled inline in renderOrcamento
+  renderOrcamento();
+}
+
+function renderComparador() {
+  const mercados = {};
+  items.filter(i => i.mercado && i.preco > 0).forEach(it => {
+    if (!mercados[it.mercado]) mercados[it.mercado] = { total:0, count:0 };
+    mercados[it.mercado].total += it.preco * it.qtd; mercados[it.mercado].count += it.qtd;
+  });
+  const el = document.getElementById('comparador-mercados');
+  if (Object.keys(mercados).length === 0) { el.innerHTML = '<div class="empty" style="padding:1rem 0;font-size:13px">Adicione o mercado nos itens para comparar preços</div>'; return; }
+  el.innerHTML = Object.entries(mercados).sort((a,b) => a[1].total - b[1].total).map(([m,d],i) => `
+    <div class="item-row">
+      <span style="font-size:20px">${i===0?'🏆':i===1?'🥈':'🥉'}</span>
+      <div class="item-info">
+        <div class="item-name">${m}</div>
+        <div class="item-meta">${d.count} itens</div>
+      </div>
+      <span style="font-weight:600;color:${i===0?'var(--green)':'var(--text)'}">R$ ${d.total.toFixed(2).replace('.',',')}</span>
+    </div>`).join('');
+}
+
+function renderRelatorios() {
+  // Gastos combinados: lista + extratos
+  const gastos = getGastosCombinados();
+  let total = Object.values(gastos).reduce((s, v) => s + v, 0);
+
+  // breakdown: lista vs extratos
+  const totalLista = items.reduce((s, it) => s + (it.preco * it.qtd), 0);
+  const totalExtratos = extratos.reduce((s, e) => s + (e.total || 0), 0);
+  const totalExtratosEl = document.getElementById('r-total-extratos');
+  if (totalExtratosEl) {
+    if (extratos.length > 0) {
+      totalExtratosEl.style.display = '';
+      document.getElementById('r-extratos-val').textContent = 'R$ ' + total.toFixed(2).replace('.',',');
+      document.getElementById('r-extratos-count').textContent =
+        extratos.length + ' extrato' + (extratos.length > 1 ? 's' : '') + ' salvo' + (extratos.length > 1 ? 's' : '') +
+        (totalLista > 0 ? ` + R$ ${totalLista.toFixed(2).replace('.',',')} da lista` : '');
+    } else {
+      totalExtratosEl.style.display = 'none';
+    }
+  }
+  // r-total já reflete lista + extratos via getGastosCombinados
+  document.getElementById('r-total').textContent = 'R$ ' + total.toFixed(2).replace('.',',');
+  document.getElementById('r-carne').textContent = 'R$ ' + (gastos.carne||0).toFixed(2).replace('.',',');
+  document.getElementById('r-verdura').textContent = 'R$ ' + ((gastos.verdura||0) + (gastos.fruta||0)).toFixed(2).replace('.',',');
+  const outros = total - (gastos.carne||0) - (gastos.verdura||0) - (gastos.fruta||0);
+  document.getElementById('r-outros').textContent = 'R$ ' + Math.max(0,outros).toFixed(2).replace('.',',');
+  const maxG = Math.max(...Object.values(gastos), 1);
+  document.getElementById('chart-cats').innerHTML = Object.entries(gastos).sort((a,b) => b[1]-a[1]).map(([c,v]) => `
+    <div class="chart-bar">
+      <span class="chart-bar-label">${catEmoji[c]||'📦'} ${c}</span>
+      <div class="chart-bar-fill" style="width:${Math.round(v/maxG*100)}%;background:${catColors[c]||'#888'}"></div>
+      <span class="chart-bar-val">R$ ${v.toFixed(2).replace('.',',')}</span>
+    </div>`).join('') || '<div class="empty" style="padding:1rem 0">Adicione itens com preço para ver o gráfico</div>';
+  const prods = {};
+  items.filter(i => i.preco > 0).forEach(it => {
+    if (!prods[it.nome]) prods[it.nome] = [];
+    prods[it.nome].push({ preco:it.preco, data:it.data });
+  });
+  const multi = Object.entries(prods).filter(([,v]) => v.length >= 1);
+  document.getElementById('price-history').innerHTML = multi.length === 0 ? '<div class="empty" style="padding:1rem 0">Adicione itens com preço para ver variações</div>' :
+    multi.slice(0,8).map(([nome,regs]) => {
+      const min = Math.min(...regs.map(r => r.preco)); const max = Math.max(...regs.map(r => r.preco));
+      const diff = regs.length > 1 ? ` · variação: ${((max-min)/min*100).toFixed(1)}%` : '';
+      return `<div class="item-row"><div class="item-info">
+        <div class="item-name">${nome}</div>
+        <div class="item-meta">Mín: R$ ${min.toFixed(2).replace('.',',')} · Máx: R$ ${max.toFixed(2).replace('.',',')}${diff}</div>
+      </div></div>`;
+    }).join('');
+}
+
+async function gerarRelatorioAI() {
+  const btn = document.getElementById('btn-relatorio');
+  btn.innerHTML = '<span class="spin">⟳</span> Analisando...'; btn.disabled = true;
+  const gastos = getGastosCombinados();
+  const total = Object.values(gastos).reduce((s, v) => s + v, 0);
+  const totalLista = items.reduce((s, it) => s + (it.preco * it.qtd), 0);
+  const totalExtratos = extratos.reduce((s, e) => s + (e.total || 0), 0);
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
+      model:'claude-sonnet-4-20250514', max_tokens:1000,
+      messages:[{ role:'user', content:`Você é uma consultora financeira doméstica prática. Analise esses dados de compras de uma família brasileira de Santa Catarina e dê no máximo 5 recomendações diretas e aplicáveis. Dados combinados (lista + extratos reais): total R$ ${total.toFixed(2)}, por categoria: ${JSON.stringify(gastos)}, metas definidas: ${JSON.stringify(metas)}. Detalhamento: lista estimada R$ ${totalLista.toFixed(2)}, extratos reais salvos: ${extratos.length} compras totalizando R$ ${totalExtratos.toFixed(2)}. Foque em: categorias acima da meta, onde economizar, e uma estimativa de economia mensal possível. Seja direta, sem enrolação.` }]
+    })});
+    const data = await resp.json();
+    document.getElementById('ai-relatorio').innerHTML = `<div class="ai-box">${data.content[0].text}</div>`;
+  } catch(e) { document.getElementById('ai-relatorio').innerHTML = '<div style="color:var(--red);margin-top:8px;font-size:13px">Erro ao gerar análise.</div>'; }
+  btn.innerHTML = '<i class="ti ti-sparkles"></i> Gerar análise inteligente'; btn.disabled = false;
+}
+
+function exportarTexto() {
+  const gastos = {}; let total = 0;
+  items.forEach(it => { const v = it.preco * it.qtd; gastos[it.cat] = (gastos[it.cat]||0) + v; total += v; });
+  let txt = `LISTA DE COMPRAS\n${new Date().toLocaleDateString('pt-BR')}\n${'─'.repeat(30)}\n\n`;
+  txt += `TOTAL ESTIMADO: R$ ${total.toFixed(2).replace('.',',')}\n\nITENS:\n`;
+  items.forEach(it => { txt += `${it.comprado?'[✓]':'[ ]'} ${it.nome} — ${it.qtd}x${it.preco>0?' — R$ '+it.preco.toFixed(2).replace('.',','):''} — ${catEmoji[it.cat]||''} ${it.cat}\n`; });
+  txt += `\nPOR CATEGORIA:\n`;
+  Object.entries(gastos).forEach(([c,v]) => { txt += `${catEmoji[c]||''} ${c}: R$ ${v.toFixed(2).replace('.',',')}\n`; });
+  const blob = new Blob([txt], { type:'text/plain;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `lista-compras-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.txt`; a.click();
+}
+
+loadData();
+</script>
+</body>
+</html>
