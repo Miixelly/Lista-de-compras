@@ -743,6 +743,91 @@ button:hover { background: var(--bg); }
   flex-shrink: 0;
 }
 .meta-saved-dot.show { opacity: 1; }
+
+/* ── MÊS CARD (NOTAS) ── */
+.mes-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.mes-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 16px;
+  cursor: pointer;
+  user-select: none;
+  gap: 10px;
+}
+.mes-card-header:active { background: var(--bg); }
+.mes-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mes-card-chip {
+  font-size: 11px;
+  background: var(--green-light);
+  color: var(--green-dark);
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.mes-card-total {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green-dark);
+  flex-shrink: 0;
+}
+.mes-card-arrow {
+  font-size: 14px;
+  color: var(--text-3);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.mes-card-arrow.open { transform: rotate(180deg); }
+.mes-card-body {
+  display: none;
+  border-top: 1px solid var(--border-light);
+  padding: 8px 0;
+}
+.mes-card-body.open { display: block; }
+
+/* ── TOTAL MÊS CARD (DADOS) ── */
+.total-mes-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+  min-width: calc(50% - 5px);
+  flex: 1;
+}
+.total-mes-card .tmc-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+.total-mes-card .tmc-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.total-mes-card .tmc-count {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
 </style>
 </head>
 <body>
@@ -943,6 +1028,10 @@ button:hover { background: var(--bg); }
 
     <!-- TAB: ORÇAMENTO -->
     <div id="tab-orcamento" class="section">
+      <div class="card">
+        <div class="sep" style="margin-bottom:10px">Mês de referência</div>
+        <select id="metas-mes-select" onchange="renderOrcamento()" style="font-size:14px;font-weight:500"></select>
+      </div>
       <div class="card" style="padding:0;overflow:hidden">
         <table class="metas-table">
           <thead>
@@ -953,10 +1042,6 @@ button:hover { background: var(--bg); }
           </thead>
           <tbody id="metas-tbody"></tbody>
         </table>
-      </div>
-      <div class="card">
-        <div class="sep">Comparador de mercados</div>
-        <div id="comparador-mercados"></div>
       </div>
     </div>
 
@@ -1002,29 +1087,11 @@ button:hover { background: var(--bg); }
         <div id="chart-cats"></div>
       </div>
 
-      <div class="card">
-        <div class="sep">Variação de preços</div>
-        <div id="price-history"></div>
-      </div>
-
-      <div class="card">
-        <div class="sep">Análise com IA</div>
-        <button class="btn-primary" onclick="gerarRelatorioAI()" id="btn-relatorio">
-          <i class="ti ti-sparkles"></i> Gerar análise inteligente
-        </button>
-        <div id="ai-relatorio"></div>
-      </div>
-
-      <div class="card">
-        <div class="sep">Exportar</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="exportarTexto()">
-            <i class="ti ti-file-text"></i> Exportar texto
-          </button>
-          <button onclick="sendPromptFn('Com base na minha lista de compras, me dá dicas práticas de economia para o supermercado no Brasil')">
-            <i class="ti ti-message"></i> Dicas de economia ↗
-          </button>
+      <div id="totais-por-mes-section">
+        <div class="sep" style="margin-top:4px">
+          <span>Total por mês</span>
         </div>
+        <div id="totais-por-mes-cards" style="display:flex;flex-wrap:wrap;gap:10px"></div>
       </div>
     </div>
 
@@ -1477,30 +1544,92 @@ function renderExtratos() {
   const totalGeral = extratos.reduce((s, e) => s + (e.total || 0), 0);
   chip.textContent = `${extratos.length} • R$ ${totalGeral.toFixed(2).replace('.',',')}`;
 
-  el.innerHTML = extratos.map(e => `
-    <div class="extrato-card">
-      <div class="extrato-card-header" onclick="toggleExtrato(${e.id}, this)">
-        <div class="extrato-card-left">
-          <div class="extrato-card-title"><i class="ti ti-receipt" style="font-size:13px;margin-right:5px;color:var(--text-3)"></i>${e.date}</div>
-          <div class="extrato-card-sub">${e.rows.length} itens</div>
+  // Agrupar extratos por mês/ano
+  const grupos = {};
+  extratos.forEach(e => {
+    const mesKey = getMesKeyFromDate(e.date);
+    if (!grupos[mesKey]) grupos[mesKey] = [];
+    grupos[mesKey].push(e);
+  });
+
+  // Ordenar meses do mais recente ao mais antigo
+  const mesesOrdenados = Object.keys(grupos).sort((a, b) => {
+    const [ma, aa] = a.split('/').map(Number);
+    const [mb, ab] = b.split('/').map(Number);
+    if (aa !== ab) return ab - aa;
+    return mb - ma;
+  });
+
+  el.innerHTML = mesesOrdenados.map(mesKey => {
+    const lista = grupos[mesKey];
+    const totalMes = lista.reduce((s, e) => s + (e.total || 0), 0);
+    const [m, a] = mesKey.split('/');
+    const nomeMes = new Date(parseInt(a), parseInt(m) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const nomeMesCapit = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+
+    const extratosHtml = lista.map(e => `
+      <div class="extrato-card" style="margin:0 10px 8px;border-radius:var(--radius-sm)">
+        <div class="extrato-card-header" onclick="toggleExtrato(${e.id}, this)">
+          <div class="extrato-card-left">
+            <div class="extrato-card-title"><i class="ti ti-receipt" style="font-size:13px;margin-right:5px;color:var(--text-3)"></i>${e.date}</div>
+            <div class="extrato-card-sub">${e.rows.length} itens</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="extrato-card-valor">R$ ${(e.total||0).toFixed(2).replace('.',',')}</span>
+            <button onclick="event.stopPropagation();removerExtrato(${e.id})" class="btn-danger btn-icon" style="flex-shrink:0" aria-label="remover">
+              <i class="ti ti-trash" style="font-size:13px"></i>
+            </button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="extrato-card-valor">R$ ${(e.total||0).toFixed(2).replace('.',',')}</span>
-          <button onclick="event.stopPropagation();removerExtrato(${e.id})" class="btn-danger btn-icon" style="flex-shrink:0" aria-label="remover">
-            <i class="ti ti-trash" style="font-size:13px"></i>
-          </button>
+        <div class="extrato-card-body" id="extrato-body-${e.id}">
+          ${(() => { const hasCat = e.rows.some(r => r.cat && r.cat.trim()); const colspan = hasCat ? 3 : 2; return `<table class="receipt-table">
+            <thead><tr>${hasCat ? '<th>Categoria</th>' : ''}<th>Item</th><th style="text-align:center">Qtde</th><th style="text-align:right">Valor</th></tr></thead>
+            <tbody>
+              ${e.rows.map(r => `<tr>${hasCat ? `<td style="color:var(--text-2);font-size:12px">${r.cat || '—'}</td>` : ''}<td>${r.nome}</td><td style="text-align:center">${r.qtde}</td><td style="text-align:right">${r.valor > 0 ? 'R$ ' + r.valor.toFixed(2).replace('.',',') : '—'}</td></tr>`).join('')}
+              <tr class="total-row"><td colspan="${colspan}"><strong>TOTAL</strong></td><td style="text-align:right"><strong>R$ ${(e.total||0).toFixed(2).replace('.',',')}</strong></td></tr>
+            </tbody>
+          </table>`; })()}
+        </div>
+      </div>`).join('');
+
+    return `<div class="mes-card">
+      <div class="mes-card-header" onclick="toggleMesCard('mescard-${mesKey.replace('/','_')}', this)">
+        <div class="mes-card-title">
+          <i class="ti ti-calendar-month" style="font-size:15px;color:var(--green)"></i>
+          ${nomeMesCapit}
+          <span class="mes-card-chip">${lista.length} extrato${lista.length > 1 ? 's' : ''}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="mes-card-total">R$ ${totalMes.toFixed(2).replace('.',',')}</span>
+          <i class="ti ti-chevron-down mes-card-arrow"></i>
         </div>
       </div>
-      <div class="extrato-card-body" id="extrato-body-${e.id}">
-        ${(() => { const hasCat = e.rows.some(r => r.cat && r.cat.trim()); const colspan = hasCat ? 3 : 2; return `<table class="receipt-table">
-          <thead><tr>${hasCat ? '<th>Categoria</th>' : ''}<th>Item</th><th style="text-align:center">Qtde</th><th style="text-align:right">Valor</th></tr></thead>
-          <tbody>
-            ${e.rows.map(r => `<tr>${hasCat ? `<td style="color:var(--text-2);font-size:12px">${r.cat || '—'}</td>` : ''}<td>${r.nome}</td><td style="text-align:center">${r.qtde}</td><td style="text-align:right">${r.valor > 0 ? 'R$ ' + r.valor.toFixed(2).replace('.',',') : '—'}</td></tr>`).join('')}
-            <tr class="total-row"><td colspan="${colspan}"><strong>TOTAL</strong></td><td style="text-align:right"><strong>R$ ${(e.total||0).toFixed(2).replace('.',',')}</strong></td></tr>
-          </tbody>
-        </table>`; })()}
+      <div class="mes-card-body" id="mescard-${mesKey.replace('/','_')}">
+        ${extratosHtml}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function getMesKeyFromDate(dateStr) {
+  if (!dateStr) return '01/' + new Date().getFullYear();
+  // espera formato dd/mm/yyyy ou dd/mm/yy
+  const parts = dateStr.split('/');
+  if (parts.length >= 3) {
+    const m = parts[1].padStart(2,'0');
+    let a = parts[2];
+    if (a.length === 2) a = '20' + a;
+    return `${m}/${a}`;
+  }
+  return '01/' + new Date().getFullYear();
+}
+
+function toggleMesCard(id, header) {
+  const body = document.getElementById(id);
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  const arrow = header.querySelector('.mes-card-arrow');
+  if (arrow) arrow.classList.toggle('open', isOpen);
 }
 
 function toggleExtrato(id, header) {
@@ -1544,26 +1673,66 @@ function mapCatFromText(text) {
   return 'outro';
 }
 
-function getGastosCombinados() {
-  // Gastos da lista de itens
-  const gastos = {};
-  items.forEach(it => { gastos[it.cat] = (gastos[it.cat] || 0) + (it.preco * it.qtd); });
+function popularMetasMesSelect() {
+  const sel = document.getElementById('metas-mes-select');
+  if (!sel) return;
+  // Meses disponíveis dos extratos
+  const mesesSet = new Set();
+  extratos.forEach(e => { mesesSet.add(getMesKeyFromDate(e.date)); });
+  // Sempre incluir mês atual
+  const hoje = new Date();
+  const mesAtualKey = String(hoje.getMonth() + 1).padStart(2,'0') + '/' + hoje.getFullYear();
+  mesesSet.add(mesAtualKey);
 
-  // Gastos dos extratos salvos (por categoria mapeada ou texto do campo cat)
-  extratos.forEach(e => {
+  const mesesOrdenados = Array.from(mesesSet).sort((a, b) => {
+    const [ma, aa] = a.split('/').map(Number);
+    const [mb, ab] = b.split('/').map(Number);
+    if (aa !== ab) return ab - aa;
+    return mb - ma;
+  });
+
+  const valorAtual = sel.value;
+  sel.innerHTML = mesesOrdenados.map(k => {
+    const [m, a] = k.split('/');
+    const nome = new Date(parseInt(a), parseInt(m) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return `<option value="${k}">${nome.charAt(0).toUpperCase() + nome.slice(1)}</option>`;
+  }).join('');
+
+  // Manter seleção ou usar mês atual
+  if (valorAtual && mesesOrdenados.includes(valorAtual)) {
+    sel.value = valorAtual;
+  } else {
+    sel.value = mesAtualKey;
+  }
+}
+
+function getGastosCombinados() {
+  const mesSel = getMesSelectValue();
+  // Gastos da lista de itens (sem filtro de mês — lista não tem mês específico)
+  const gastos = {};
+  // Gastos dos extratos salvos filtrados pelo mês selecionado
+  extratos.filter(e => getMesKeyFromDate(e.date) === mesSel).forEach(e => {
     e.rows.forEach(r => {
       const valorNum = typeof r.valor === 'number' ? r.valor : parseFloat((r.valor||'').toString().replace(/[^\d,]/g,'').replace(',','.')) || 0;
       if (valorNum <= 0) return;
-      // tenta mapear pelo campo cat primeiro, depois pelo nome do item
       const catMapped = mapCatFromText(r.cat) !== 'outro' ? mapCatFromText(r.cat) : mapCatFromText(r.nome);
       gastos[catMapped] = (gastos[catMapped] || 0) + valorNum;
     });
   });
-
+  // Adiciona itens da lista atual (sem filtro)
+  items.forEach(it => { gastos[it.cat] = (gastos[it.cat] || 0) + (it.preco * it.qtd); });
   return gastos;
 }
 
+function getMesSelectValue() {
+  const sel = document.getElementById('metas-mes-select');
+  if (sel && sel.value) return sel.value;
+  const hoje = new Date();
+  return String(hoje.getMonth() + 1).padStart(2,'0') + '/' + hoje.getFullYear();
+}
+
 function renderOrcamento() {
+  popularMetasMesSelect();
   const gastos = getGastosCombinados();
   const cats = Object.keys(metas);
   const catLabel = {
@@ -1602,7 +1771,6 @@ function renderOrcamento() {
       </td>
     </tr>`;
   }).join('');
-  renderComparador();
 }
 
 let _metaTimers = {};
@@ -1637,25 +1805,6 @@ function renderProgresso() {
   renderOrcamento();
 }
 
-function renderComparador() {
-  const mercados = {};
-  items.filter(i => i.mercado && i.preco > 0).forEach(it => {
-    if (!mercados[it.mercado]) mercados[it.mercado] = { total:0, count:0 };
-    mercados[it.mercado].total += it.preco * it.qtd; mercados[it.mercado].count += it.qtd;
-  });
-  const el = document.getElementById('comparador-mercados');
-  if (Object.keys(mercados).length === 0) { el.innerHTML = '<div class="empty" style="padding:1rem 0;font-size:13px">Adicione o mercado nos itens para comparar preços</div>'; return; }
-  el.innerHTML = Object.entries(mercados).sort((a,b) => a[1].total - b[1].total).map(([m,d],i) => `
-    <div class="item-row">
-      <span style="font-size:20px">${i===0?'🏆':i===1?'🥈':'🥉'}</span>
-      <div class="item-info">
-        <div class="item-name">${m}</div>
-        <div class="item-meta">${d.count} itens</div>
-      </div>
-      <span style="font-weight:600;color:${i===0?'var(--green)':'var(--text)'}">R$ ${d.total.toFixed(2).replace('.',',')}</span>
-    </div>`).join('');
-}
-
 function renderRelatorios() {
   // Gastos combinados: lista + extratos
   const gastos = getGastosCombinados();
@@ -1676,7 +1825,6 @@ function renderRelatorios() {
       totalExtratosEl.style.display = 'none';
     }
   }
-  // r-total já reflete lista + extratos via getGastosCombinados
   document.getElementById('r-total').textContent = 'R$ ' + total.toFixed(2).replace('.',',');
   document.getElementById('r-carne').textContent = 'R$ ' + (gastos.carne||0).toFixed(2).replace('.',',');
   document.getElementById('r-verdura').textContent = 'R$ ' + ((gastos.verdura||0) + (gastos.fruta||0)).toFixed(2).replace('.',',');
@@ -1689,52 +1837,46 @@ function renderRelatorios() {
       <div class="chart-bar-fill" style="width:${Math.round(v/maxG*100)}%;background:${catColors[c]||'#888'}"></div>
       <span class="chart-bar-val">R$ ${v.toFixed(2).replace('.',',')}</span>
     </div>`).join('') || '<div class="empty" style="padding:1rem 0">Adicione itens com preço para ver o gráfico</div>';
-  const prods = {};
-  items.filter(i => i.preco > 0).forEach(it => {
-    if (!prods[it.nome]) prods[it.nome] = [];
-    prods[it.nome].push({ preco:it.preco, data:it.data });
+
+  // ── TOTAIS POR MÊS ──
+  renderTotaisPorMes();
+}
+
+function renderTotaisPorMes() {
+  const container = document.getElementById('totais-por-mes-cards');
+  if (!container) return;
+
+  if (extratos.length === 0) {
+    container.innerHTML = '<div class="empty" style="padding:1rem 0;font-size:13px;width:100%">Nenhum extrato salvo ainda</div>';
+    return;
+  }
+
+  const grupos = {};
+  extratos.forEach(e => {
+    const mesKey = getMesKeyFromDate(e.date);
+    if (!grupos[mesKey]) grupos[mesKey] = { total: 0, count: 0 };
+    grupos[mesKey].total += (e.total || 0);
+    grupos[mesKey].count += 1;
   });
-  const multi = Object.entries(prods).filter(([,v]) => v.length >= 1);
-  document.getElementById('price-history').innerHTML = multi.length === 0 ? '<div class="empty" style="padding:1rem 0">Adicione itens com preço para ver variações</div>' :
-    multi.slice(0,8).map(([nome,regs]) => {
-      const min = Math.min(...regs.map(r => r.preco)); const max = Math.max(...regs.map(r => r.preco));
-      const diff = regs.length > 1 ? ` · variação: ${((max-min)/min*100).toFixed(1)}%` : '';
-      return `<div class="item-row"><div class="item-info">
-        <div class="item-name">${nome}</div>
-        <div class="item-meta">Mín: R$ ${min.toFixed(2).replace('.',',')} · Máx: R$ ${max.toFixed(2).replace('.',',')}${diff}</div>
-      </div></div>`;
-    }).join('');
-}
 
-async function gerarRelatorioAI() {
-  const btn = document.getElementById('btn-relatorio');
-  btn.innerHTML = '<span class="spin">⟳</span> Analisando...'; btn.disabled = true;
-  const gastos = getGastosCombinados();
-  const total = Object.values(gastos).reduce((s, v) => s + v, 0);
-  const totalLista = items.reduce((s, it) => s + (it.preco * it.qtd), 0);
-  const totalExtratos = extratos.reduce((s, e) => s + (e.total || 0), 0);
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({
-      model:'claude-sonnet-4-20250514', max_tokens:1000,
-      messages:[{ role:'user', content:`Você é uma consultora financeira doméstica prática. Analise esses dados de compras de uma família brasileira de Santa Catarina e dê no máximo 5 recomendações diretas e aplicáveis. Dados combinados (lista + extratos reais): total R$ ${total.toFixed(2)}, por categoria: ${JSON.stringify(gastos)}, metas definidas: ${JSON.stringify(metas)}. Detalhamento: lista estimada R$ ${totalLista.toFixed(2)}, extratos reais salvos: ${extratos.length} compras totalizando R$ ${totalExtratos.toFixed(2)}. Foque em: categorias acima da meta, onde economizar, e uma estimativa de economia mensal possível. Seja direta, sem enrolação.` }]
-    })});
-    const data = await resp.json();
-    document.getElementById('ai-relatorio').innerHTML = `<div class="ai-box">${data.content[0].text}</div>`;
-  } catch(e) { document.getElementById('ai-relatorio').innerHTML = '<div style="color:var(--red);margin-top:8px;font-size:13px">Erro ao gerar análise.</div>'; }
-  btn.innerHTML = '<i class="ti ti-sparkles"></i> Gerar análise inteligente'; btn.disabled = false;
-}
+  const mesesOrdenados = Object.keys(grupos).sort((a, b) => {
+    const [ma, aa] = a.split('/').map(Number);
+    const [mb, ab] = b.split('/').map(Number);
+    if (aa !== ab) return ab - aa;
+    return mb - ma;
+  });
 
-function exportarTexto() {
-  const gastos = {}; let total = 0;
-  items.forEach(it => { const v = it.preco * it.qtd; gastos[it.cat] = (gastos[it.cat]||0) + v; total += v; });
-  let txt = `LISTA DE COMPRAS\n${new Date().toLocaleDateString('pt-BR')}\n${'─'.repeat(30)}\n\n`;
-  txt += `TOTAL ESTIMADO: R$ ${total.toFixed(2).replace('.',',')}\n\nITENS:\n`;
-  items.forEach(it => { txt += `${it.comprado?'[✓]':'[ ]'} ${it.nome} — ${it.qtd}x${it.preco>0?' — R$ '+it.preco.toFixed(2).replace('.',','):''} — ${catEmoji[it.cat]||''} ${it.cat}\n`; });
-  txt += `\nPOR CATEGORIA:\n`;
-  Object.entries(gastos).forEach(([c,v]) => { txt += `${catEmoji[c]||''} ${c}: R$ ${v.toFixed(2).replace('.',',')}\n`; });
-  const blob = new Blob([txt], { type:'text/plain;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = `lista-compras-${new Date().toLocaleDateString('pt-BR').replace(/\//g,'-')}.txt`; a.click();
+  container.innerHTML = mesesOrdenados.map(mesKey => {
+    const { total, count } = grupos[mesKey];
+    const [m, a] = mesKey.split('/');
+    const nome = new Date(parseInt(a), parseInt(m) - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const nomeCapit = nome.charAt(0).toUpperCase() + nome.slice(1);
+    return `<div class="total-mes-card">
+      <div class="tmc-label">${nomeCapit}</div>
+      <div class="tmc-val">R$ ${total.toFixed(2).replace('.',',')}</div>
+      <div class="tmc-count">${count} extrato${count > 1 ? 's' : ''}</div>
+    </div>`;
+  }).join('');
 }
 
 loadData();
